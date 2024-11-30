@@ -155,6 +155,8 @@ def run_planning_and_process(
         num_processes: number of processes to use for preprocessing
         run_preprocessing: Preprocess and check data. Defaults to True.
     """
+    print("=============================================")
+    print("planner_name: ", planner_name) # D3V001
     planner_cls = PLANNER_REGISTRY.get(planner_name)
     planner = planner_cls(
         preprocessed_output_dir=preprocessed_output_dir
@@ -380,10 +382,15 @@ def main():
 
     initialize_config_module(config_module="nndet.conf")
     # perform preprocessing checks first
+    print("=============================================")
+    print("tasks", tasks)
+
     if not no_check:
         for task in tasks:
             _ov = copy.deepcopy(ov) if ov is not None else []
             cfg = compose(task, "config.yaml", overrides=_ov)
+            print("=============================================")
+            print("cfg", cfg)
             check_dataset_file(cfg["task"])
             check_data_and_label_splitted(
                 cfg["task"],

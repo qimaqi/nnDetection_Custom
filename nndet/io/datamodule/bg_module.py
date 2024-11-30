@@ -202,6 +202,13 @@ class Datamodule(BaseModule):
         dataloader_cls = DATALOADER_REGISTRY.get(self.dataloader)
         logger.info(f"Using training {self.dataloader} with {self.dataloader_kwargs}")
 
+        print("====================================")
+
+        print("final self.patch_size", self.patch_size)
+
+        print("====================================")
+
+        
         dl_tr = dataloader_cls(
             data=self.dataset_tr,
             batch_size=self.batch_size,

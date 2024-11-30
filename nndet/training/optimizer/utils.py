@@ -28,6 +28,48 @@ NORM_TYPES = [nn.BatchNorm1d, nn.BatchNorm2d, nn.BatchNorm3d,
               ]
 
 
+
+def get_params_no_wd_on_norm_seperate_lr(model: torch.nn.Module, weight_decay: float, lr_encoder: float = 1e-4, lr_other: float = 1e-3):
+    """
+    Apply weight decay to model but skip normalization layers
+
+    Args:
+        model (torch.nn.Module) : module for parameters
+        weight_decay (float) : weight decay for other parameters
+
+    Returns:
+        dict: dict with params and weight decay
+
+    See Also:
+        https://discuss.pytorch.org/t/weight-decay-in-the-optimizers-is-a-bad-idea-especially-with-batchnorm/16994/2
+    """
+    identify_parameters(model, {"no_wd": NORM_TYPES})
+
+    decay_params_encoder = []
+    decay_params_other = []
+    no_decay_params_encoder = []
+    no_decay_params_other = []
+    for name, param in model.named_parameters():
+        if not hasattr(param, "no_wd"):
+            if 'encoder' in name:
+                decay_params_encoder.append(param)
+            else:
+                decay_params_other.append(param)
+        else:
+            if 'encoder' in name:
+                no_decay_params_encoder.append(param)
+            else:
+                no_decay_params_other.append(param)
+
+    return [
+        {'params': decay_params_encoder, 'weight_decay': weight_decay, 'lr': lr_encoder},
+        {'params': decay_params_other, 'weight_decay': weight_decay, 'lr': lr_other},
+        {'params': no_decay_params_encoder, 'weight_decay': 0., 'lr': lr_encoder},
+        {'params': no_decay_params_other, 'weight_decay': 0., 'lr': lr_other},
+    ]
+
+
+
 def get_params_no_wd_on_norm(model: torch.nn.Module, weight_decay: float):
     """
     Apply weight decay to model but skip normalization layers

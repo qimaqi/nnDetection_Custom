@@ -476,6 +476,7 @@ class AnchorGenerator3DS(AnchorGenerator3D):
                  depth: Sequence[Union[int, Sequence[int]]],
                  **kwargs,
                  ):
+        # anchors {'width': [(6.0, 7.0, 15.0), (12.0, 14.0, 30.0), (24.0, 28.0, 60.0), (48.0, 56.0, 120.0)], 'height': [(6.0, 7.0, 16.0), (12.0, 14.0, 32.0), (24.0, 28.0, 64.0), (48.0, 56.0, 128.0)], 'depth': [(6.0, 7.0, 16.0), (12.0, 14.0, 32.0), (24.0, 28.0, 64.0), (48.0, 56.0, 128.0)], 'stride': 1}
         """
         Helper to generate anchors for different input sizes
         Uses a different parametrization of anchors

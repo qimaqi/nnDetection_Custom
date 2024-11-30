@@ -115,3 +115,4 @@ ENV/
 *.model
 
 .DS_Store
+sh_jobs/luna/sbatch_log/* 

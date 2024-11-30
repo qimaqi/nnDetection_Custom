@@ -19,6 +19,8 @@ class Registry:
         self.mapping = {}
 
     def __getitem__(self, key):
+        # print("self.mapping: ", self.mapping)
+        # self.mapping:  {'RetinaUNetV001': {'fn': <class 'nndet.ptmodule.retinaunet.v001.RetinaUNetV001'>, 'path': '/scratch_net/schusch/qimaqi/cbct_proj/CBCT/nnDetection_Custom/nndet/ptmodule/retinaunet/v001.py'}}
         return self.mapping[key]["fn"]
 
     def register(self, fn: Callable):

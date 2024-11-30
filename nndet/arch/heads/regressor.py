@@ -293,6 +293,10 @@ class GIoURegressor(BaseRegressor):
                 pyramid level
             kwargs: keyword arguments passed to first and internal convolutions
         """
+        print("====================================")
+        print("GIoURegressor")
+        print("anchors_per_pos",anchors_per_pos)
+
         super().__init__(
             conv=conv,
             in_channels=in_channels,

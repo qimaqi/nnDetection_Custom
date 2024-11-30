@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 
-from nndet.ptmodule.retinaunet.base import RetinaUNetModule
+from nndet.ptmodule.retinaunet.base import RetinaUNetModule, VideoMAEUNetModule, SwinUnetrUNetModule
 
 from nndet.core.boxes.matcher import ATSSMatcher
 from nndet.arch.heads.classifier import BCECLassifier
@@ -28,11 +28,38 @@ from nndet.ptmodule import MODULE_REGISTRY
 
 @MODULE_REGISTRY.register
 class RetinaUNetV001(RetinaUNetModule):
-    base_conv_cls = ConvInstanceRelu
-    head_conv_cls = ConvGroupRelu
+   # print("====================================")
+   # print("RetinaUNetV001")
+   base_conv_cls = ConvInstanceRelu
+   head_conv_cls = ConvGroupRelu
 
-    head_cls = DetectionHeadHNMNative
-    head_classifier_cls = BCECLassifier
-    head_regressor_cls = GIoURegressor
-    matcher_cls = ATSSMatcher
-    segmenter_cls = DiCESegmenterFgBg
+   head_cls = DetectionHeadHNMNative
+   head_classifier_cls = BCECLassifier
+   head_regressor_cls = GIoURegressor
+   matcher_cls = ATSSMatcher
+   segmenter_cls = DiCESegmenterFgBg
+
+@MODULE_REGISTRY.register
+class VideoMAEUNetV001(VideoMAEUNetModule):
+   # print("====================================")
+   # print("RetinaUNetV001")
+   base_conv_cls = ConvInstanceRelu
+   head_conv_cls = ConvGroupRelu
+
+   head_cls = DetectionHeadHNMNative
+   head_classifier_cls = BCECLassifier
+   head_regressor_cls = GIoURegressor
+   matcher_cls = ATSSMatcher
+   segmenter_cls = DiCESegmenterFgBg
+
+
+@MODULE_REGISTRY.register
+class SwinUnetrV001(SwinUnetrUNetModule):
+   base_conv_cls = ConvInstanceRelu
+   head_conv_cls = ConvGroupRelu
+
+   head_cls = DetectionHeadHNMNative
+   head_classifier_cls = BCECLassifier
+   head_regressor_cls = GIoURegressor
+   matcher_cls = ATSSMatcher
+   segmenter_cls = DiCESegmenterFgBg

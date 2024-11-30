@@ -184,8 +184,12 @@ class BoxC002(BoxC001):
             Sequence[int]: patch size to use for training
         """
         self.estimator.batch_size = self.batch_size
-        patch_size = np.asarray(self._get_initial_patch_size(
-            target_spacing_transposed, target_median_shape_transposed))
+        patch_size = np.array([16,224,224])
+        # np.asarray(self._get_initial_patch_size(
+        #     target_spacing_transposed, target_median_shape_transposed))
+        # np.array([16,224,224])
+        # np.asarray(self._get_initial_patch_size(
+        #     target_spacing_transposed, target_median_shape_transposed))
         first_run = True
         while True:
             if first_run:

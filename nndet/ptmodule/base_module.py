@@ -49,6 +49,10 @@ class LightningBaseModule(pl.LightningModule):
         """
         super().__init__()
         self.model_cfg = model_cfg
+        print("====================================")
+        print("model_cfg", model_cfg)
+
+        print("====================================")
         self.trainer_cfg = trainer_cfg
         self.plan = plan
 

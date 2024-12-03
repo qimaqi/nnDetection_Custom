@@ -18,10 +18,26 @@ import torch.nn.functional as F
 import numpy as np 
 
 
-# conv3D input [B, 1024, 8, 14, 14]
-# output: [B, 320, 4, 14, 14]
+
+class Decoder_Map(nn.Module):
+    def __init__(self, in_planes, out_planes, input_size, output_size):
+        super().__init__()
+        # input_size [D, H, W]
+        # output_size [D', H', W']
+        input_size = np.array(input_size)
+        output_size = np.array(output_size)
+        assert (input_size % 2 == 0).all() and (output_size % 2 == 0).all()
+        assert len(input_size) == len(output_size)
+        rescale_ratio = input_size // output_size
+        # TODO
+        if rescale_ratio[0] > 1:
+            pooling_kernel = (rescale_ratio[0], 1, 1)
+
+
 
 class Decoder24_Upsampler(nn.Module):
+    # conv3D input [B, 1024, 8, 14, 14]
+    # output: [B, 320, 4, 14, 14]
     def __init__(self, in_planes, out_planes):
         super().__init__()
         self.pool = nn.MaxPool3d(kernel_size=(2,1,1), stride=(2,1,1))
@@ -30,7 +46,6 @@ class Decoder24_Upsampler(nn.Module):
     def forward(self, x):
         x = self.pool(x)
         return self.block(x)
-
 
 
 class Decoder17_Upsampler(nn.Module):
@@ -77,6 +92,10 @@ class Decoder5_Upsampler(nn.Module):
         x = self.block0(x)
         x = self.block1(x)
         return self.block2(x)
+
+
+
+
 
 
 class SingleDeconv2DBlock(nn.Module):

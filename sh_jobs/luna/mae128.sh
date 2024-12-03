@@ -27,6 +27,8 @@ conda activate nndet_swin
 export CUDA_HOME=$CONDA_PREFIX
 export PATH=$CUDA_HOME/bin:$PATH
 export PATH=/scratch_net/schusch/qimaqi/install_gcc:$PATH
+# export CC=/scratch_net/schusch/qimaqi/install_gcc/bin/gcc-11.3.0
+# export CXX=/scratch_net/schusch/qimaqi/install_gcc/bin/g++-11.3.0
 
 export CXX=$CONDA_PREFIX/bin/x86_64-conda_cos6-linux-gnu-c++
 export CC=$CONDA_PREFIX/bin/x86_64-conda_cos6-linux-gnu-cc
@@ -36,15 +38,8 @@ export det_models="/usr/bmicnas01/data-biwi-01/ct_video_mae_bmicscratch/data/nnD
 export OMP_NUM_THREADS=1
 
 # nndet_example
-nndet_prep 018 -o train=swinunetr 
+# nndet_prep 018
+# nndet_unpack ${det_data}/Task018_LunaSWIN/preprocessed/D3V001_3d/imagesTr 6
+# nndet_unpack ${det_data}/Task016_Luna/preprocessed/D3V001_3d/imagesTr 6
 
-nndet_unpack ${det_data}/Task018_LunaSWIN/preprocessed/D3V001_3d/imagesTr 6
-
-# nndet_train 017 -o exp.fold=1 train=swinunetr
-# [ 80 192 160] patch size as default
-# we use [64, 128, 128] as new standard patch size for experiments
-# first check how the slices look like
-# (1, 240, 441, 441) it the shape 
-# (1, 285, 427, 427)
-# nndet_train 018 -o exp.fold=1 train=v001
-# nndet_train 018 -o exp.fold=0 train=swinunetr
+nndet_train 018 -o exp.fold=0 train=mae model_cfg.encoder_kwargs.img_size=128 model_cfg.encoder_kwargs.num_frames=64 model_cfg.encoder_kwargs.output_layers=[5,10,15,19]

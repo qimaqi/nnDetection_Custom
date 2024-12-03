@@ -5,10 +5,9 @@
 #SBATCH --time=48:00:00
 #SBATCH --gres=gpu:1
 
-#SBATCH --nodelist=bmicgpu09
+#SBATCH --nodelist=bmicgpu08
 #SBATCH --cpus-per-task=4
-#SBATCH --mem-per-cpu=16GB
-##SBATCH --mem 32GB
+#SBATCH --mem 96GB
 
 ##SBATCH --account=staff 
 ##SBATCH --gres=gpu:1
@@ -22,7 +21,7 @@
 
 
 source /scratch_net/schusch/qimaqi/miniconda3/etc/profile.d/conda.sh
-conda activate nndet_venv
+conda activate nndet_swin
 
 export CUDA_HOME=$CONDA_PREFIX
 export PATH=$CUDA_HOME/bin:$PATH
@@ -47,4 +46,6 @@ export OMP_NUM_THREADS=1
 # nndet_consolidate 016 RetinaUNetV001_D3V001_3d --sweep_boxes
 # nndet_eval 016 RetinaUNetV001_D3V001_3d 0 --boxes --analyze_boxes
 
-nndet_sweep 016 RetinaUNetV001_D3V001_3d 0
+# nndet_sweep 016 RetinaUNetV001_D3V001_3d 0
+
+nndet_train 016 -o exp.fold=1 

@@ -38,6 +38,7 @@ class BoxC002(BoxC001):
             model_cfg=model_cfg,
             **kwargs
             )
+        self.model_cfg = model_cfg
 
     def create_default_settings(self):
         """
@@ -184,12 +185,24 @@ class BoxC002(BoxC001):
             Sequence[int]: patch size to use for training
         """
         self.estimator.batch_size = self.batch_size
-        patch_size = np.array([16,224,224])
+        print("="*50)
+        if 'img_size' in self.model_cfg['encoder_kwargs'].keys():
+            if len(self.model_cfg['encoder_kwargs']['img_size']) == 1: #num_frames
+                patch_size = np.array([self.model_cfg['encoder_kwargs']['num_frames'],self.model_cfg['encoder_kwargs']['img_size'],self.model_cfg['encoder_kwargs']['img_size']])
+            elif len(self.model_cfg['encoder_kwargs']['img_size']) == 3:
+                patch_size = self.model_cfg['encoder_kwargs']['img_size']
+            print("manual set patch size", patch_size)
+        else:
+            print("auto set patch size")
+            patch_size = np.asarray(self._get_initial_patch_size(
+            target_spacing_transposed, target_median_shape_transposed))
+
+        
+        
         # np.asarray(self._get_initial_patch_size(
         #     target_spacing_transposed, target_median_shape_transposed))
         # np.array([16,224,224])
-        # np.asarray(self._get_initial_patch_size(
-        #     target_spacing_transposed, target_median_shape_transposed))
+
         first_run = True
         while True:
             if first_run:

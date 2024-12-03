@@ -45,11 +45,11 @@ trainer_cfg:
   num_train_batches_per_epoch: 2500 # number of train batches per epoch
   num_val_batches_per_epoch: 100 # number of val batches per epoch
 
-  initial_lr: 0.0001 # initial learning rate to start with
-  seperate_lr: True
+  initial_lr: 5.e-5 # initial learning rate to start with
+  seperate_lr: False
   sgd_momentum: 0.9 # momentum term
   sgd_nesterov: True # nesterov momentum
-  weight_decay: 3.e-5 # weight decay for optimizer
+  weight_decay: 1.e-6 # weight decay for optimizer
 
   warm_iterations: 4000 # number of iterations with warmup
   warm_lr: 1.e-6 # learning rate to start warmup from
@@ -58,6 +58,7 @@ trainer_cfg:
 
   swa_epochs: 10 # number of epochs to run swa with cyclic learning rate
   # sweep_ckpt: Select checkpoint identifier for sweeping. Default "last".
+  gradient_clip_val: 12
 
 model_cfg:
   encoder_kwargs:
@@ -73,6 +74,7 @@ model_cfg:
     no_qkv_bias: False 
     sep_pos_embed: True
     map_to_decoder_type: "conv"
+    output_layers: [5, 11, 17] # [0, 5, 11, 17, 23] for 16x224x224, [0, 5, 10, 15, 20, 23] for 64x128x128
     pretrained_path: /scratch_net/schusch/qimaqi/cbct_proj/CBCT/Video_MAE_Seg/checkpoints/mae_pretrain_vit_large_k700.pth
 
   decoder_kwargs: # keyword arguments passed to decoder

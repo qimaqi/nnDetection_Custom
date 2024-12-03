@@ -51,11 +51,13 @@ def get_params_no_wd_on_norm_seperate_lr(model: torch.nn.Module, weight_decay: f
     no_decay_params_other = []
     for name, param in model.named_parameters():
         if not hasattr(param, "no_wd"):
+            print("weight decay for", name)
             if 'encoder' in name:
                 decay_params_encoder.append(param)
             else:
                 decay_params_other.append(param)
         else:
+            print("weight decay skipped for", name)
             if 'encoder' in name:
                 no_decay_params_encoder.append(param)
             else:

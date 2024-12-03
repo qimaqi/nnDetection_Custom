@@ -21,9 +21,23 @@ from typing import Callable, Tuple, Sequence, Union, List, Dict, Optional
 from nndet.arch.encoder.abstract import AbstractEncoder
 from nndet.arch.blocks.basic import AbstractBlock
 from nndet.arch.encoder.videomae_encoder import VideoMAE_Encoder, load_pretrained_weights_encoder
+from nndet.arch.encoder.swinunetr import SwinUNETR_Encoder
+
 
 __all__ = ["Encoder", "VideoMAEEncoder", "SwinUnetrEncoder"]
 
+
+def dummy_calculate_output_channel(conv_kernels, in_channels, plan_cfg, model_cfg):
+    """
+    Dummy function to calculate output channels
+    """
+    out_channels = []
+
+    stages_num = len(conv_kernels)
+    for i in range(stages_num):
+        out_channels.append(1)
+
+    return 1
 
 
 class Encoder(AbstractEncoder):
@@ -120,24 +134,24 @@ class Encoder(AbstractEncoder):
                 param:`out_stages`
         """
         outputs = []
-        # input shape torch.Size([4, 1, 128, 128, 128])
+        # for 64x128x128 input
         # stage 0
-        # x before torch.Size([4, 1, 128, 128, 128])
-        # x after torch.Size([4, 32, 128, 128, 128])
+        # x before torch.Size([4, 1, 64, 128, 128])
+        # x after torch.Size([4, 32, 64, 128, 128])
         # stage 1
-        # x before torch.Size([4, 32, 128, 128, 128])
-        # x after torch.Size([4, 64, 64, 64, 64])
+        # x before torch.Size([4, 32, 64, 128, 128])
+        # x after torch.Size([4, 64, 32, 64, 64])
         # stage 2
-        # x before torch.Size([4, 64, 64, 64, 64])
-        # x after torch.Size([4, 128, 32, 32, 32])
+        # x before torch.Size([4, 64, 32, 64, 64])
+        # x after torch.Size([4, 128, 16, 32, 32])
         # stage 3
-        # x before torch.Size([4, 128, 32, 32, 32])
-        # x after torch.Size([4, 256, 16, 16, 16])
+        # x before torch.Size([4, 128, 16, 32, 32])
+        # x after torch.Size([4, 256, 8, 16, 16])
         # stage 4
-        # x before torch.Size([4, 256, 16, 16, 16])
-        # x after torch.Size([4, 320, 8, 8, 8])
+        # x before torch.Size([4, 256, 8, 16, 16])
+        # x after torch.Size([4, 320, 4, 8, 8])
         # stage 5
-        # x before torch.Size([4, 320, 8, 8, 8])
+        # x before torch.Size([4, 320, 4, 8, 8])
         # x after torch.Size([4, 320, 4, 4, 4])
         # print("input shape", x.shape)
         for stage_id, module in enumerate(self.stages):
@@ -251,13 +265,18 @@ class VideoMAEEncoder(AbstractEncoder):
             patch_size=encoder_cfg["patch_size"],
             num_frames=encoder_cfg["num_frames"],
             map_to_decoder_type=encoder_cfg["map_to_decoder_type"],
+            output_layers=encoder_cfg["output_layers"],
         )
 
         if encoder_cfg['pretrained_path'] is not None:
             load_pretrained_weights_encoder(self.stages, encoder_cfg)
 
-        
-        self.out_channels = [32, 64, 128, 256, 320] # TODO
+        if len(conv_kernels) == 5: 
+            # using 16x224x224 input
+            self.out_channels = [32, 64, 128, 256, 320] # TODO
+        elif len(conv_kernels) == 6:
+            # using 64x128x128 input
+            self.out_channels = [32, 64, 128, 256, 320, 320]
 
         # for stage_id in range(self.num_stages):
         #     if stage_id == 0:
@@ -368,28 +387,7 @@ class SwinUnetrEncoder(AbstractEncoder):
                  max_channels: int = None,
                 #  first_block_cls: Optional[AbstractBlock] = None,
                  ):
-        """
-        Build a modular encoder model with specified blocks
-        The Encoder consists of "stages" which (in general) represent one
-        resolution in the resolution pyramid. The first level alwasys has
-        full resolution.
 
-        Args:
-            conv: conv generator to use for internal convolutions
-            strides: strides for pooling layers. Should have one
-                element less than conv_kernels
-            conv_kernels: kernel sizes for convolutions
-            block_cls: generate a block of convolutions (
-                e.g. stacked residual blocks)
-            in_channels: number of input channels
-            start_channels: number of start channels
-            stage_kwargs: additional keyword arguments for stages.
-                Defaults to None.
-            out_stages: define which stages should be returned. If `None` all
-                stages will be returned.Defaults to None.
-            first_block_cls: generate a block of convolutions for the first stage
-                By default this equal the provided block_cls
-        """
         super().__init__()
         self.num_stages = len(conv_kernels)
         self.dim = dim 
@@ -419,18 +417,21 @@ class SwinUnetrEncoder(AbstractEncoder):
         """init some parameters"""
         """some other parameters can change from model config"""
         encoder_cfg = model_cfg["encoder_kwargs"]
-        self.stages = VideoMAE_Encoder(
+        self.stages = SwinUNETR_Encoder(
             img_size=encoder_cfg["img_size"], 
-            patch_size=encoder_cfg["patch_size"],
-            num_frames=encoder_cfg["num_frames"],
+            in_channels=in_channels,
+            depths=encoder_cfg["depths"],
+            num_heads=encoder_cfg["num_heads"],
+            feature_size=encoder_cfg["feature_size"],
             map_to_decoder_type=encoder_cfg["map_to_decoder_type"],
+            pretrained_path=encoder_cfg["pretrained_path"],
         )
 
         if encoder_cfg['pretrained_path'] is not None:
             load_pretrained_weights_encoder(self.stages, encoder_cfg)
 
         
-        self.out_channels = [32, 64, 128, 256, 320] # TODO
+        self.out_channels = [32, 64, 128, 256, 320, 320] # TODO
 
         # for stage_id in range(self.num_stages):
         #     if stage_id == 0:
@@ -471,21 +472,38 @@ class SwinUnetrEncoder(AbstractEncoder):
         """
         outputs = []
         # stage 0
-        # x before torch.Size([4, 1, 16, 224, 224])
-        # x after torch.Size([4, 32, 16, 224, 224])
+        # x before torch.Size([4, 1, 64, 128, 128])
+        # x after torch.Size([4, 32, 64, 128, 128])
         # stage 1
-        # x before torch.Size([4, 32, 16, 224, 224])
-        # x after torch.Size([4, 64, 8, 112, 112])
+        # x before torch.Size([4, 32, 64, 128, 128])
+        # x after torch.Size([4, 64, 32, 64, 64])
         # stage 2
-        # x before torch.Size([4, 64, 8, 112, 112])
-        # x after torch.Size([4, 128, 4, 56, 56])
+        # x before torch.Size([4, 64, 32, 64, 64])
+        # x after torch.Size([4, 128, 16, 32, 32])
         # stage 3
-        # x before torch.Size([4, 128, 4, 56, 56])
-        # x after torch.Size([4, 256, 4, 28, 28])
+        # x before torch.Size([4, 128, 16, 32, 32])
+        # x after torch.Size([4, 256, 8, 16, 16])
         # stage 4
-        # x before torch.Size([4, 256, 4, 28, 28])
-        # x after torch.Size([4, 320, 4, 14, 14])
+        # x before torch.Size([4, 256, 8, 16, 16])
+        # x after torch.Size([4, 320, 4, 8, 8])
+        # stage 5
+        # x before torch.Size([4, 320, 4, 8, 8])
+        # x after torch.Size([4, 320, 4, 4, 4])
+        # print("input shape", x.shape)
 
+        # enc0 torch.Size([1, 48, 64, 128, 128])
+        # enc1 torch.Size([1, 48, 32, 64, 64])
+        # enc2 torch.Size([1, 96, 16, 32, 32])
+        # enc3 torch.Size([1, 192, 8, 16, 16])
+        # dec4 torch.Size([1, 768, 2, 4, 4])
+
+        # hidden_states_out 5
+        # enc0 torch.Size([1, 48, 64, 128, 128])
+        # hidden_states_out[0] torch.Size([1, 48, 32, 64, 64])
+        # hidden_states_out[1] torch.Size([1, 96, 16, 32, 32])
+        # hidden_states_out[2] torch.Size([1, 192, 8, 16, 16])
+        # hidden_states_out[3] torch.Size([1, 384, 4, 8, 8])
+        # hidden_states_out[4] torch.Size([1, 768, 2, 4, 4])
         all_features = self.stages(x)
         for layer_i, output_i in enumerate(all_features):
             # print(f"output_{layer_i} shape", output_i.shape)

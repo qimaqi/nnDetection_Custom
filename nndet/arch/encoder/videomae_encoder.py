@@ -173,11 +173,12 @@ class VideoMAE_Encoder(nn.Module):
         cls_embed=False,
         use_lora=0, # 0 for not use lora
         map_to_decoder_type='conv',
+        output_layers=[5,11,17],
     ):
         super().__init__()
         cls_embed_decoder = False 
         self.cls_embed_decoder = cls_embed_decoder
-
+        self.output_layers = output_layers
         
         self.trunc_init = trunc_init
         self.sep_pos_embed = sep_pos_embed
@@ -205,7 +206,7 @@ class VideoMAE_Encoder(nn.Module):
         self.output_size = [num_frames,img_size, img_size]
         self.embed_dim = embed_dim
 
-        self.intermediate_feat_layer = [5,11,17]
+        self.intermediate_feat_layer = output_layers
         # we need stage 0 1 2 3 4, stage 1 from 5, stage 2 from 11, stage 3 from 17, stage 4 from last
  
         
@@ -248,16 +249,65 @@ class VideoMAE_Encoder(nn.Module):
         )
 
         if self.map_to_decoder_type == 'conv':
-            self.decoder24_upsampler = Decoder24_Upsampler(embed_dim, 320) # TODO change 320 from config
-            # encoder dimension: patch size 16, t_patch size 2 
-            # each encoder dim: 8x14x14x1024 
-            self.decoder17_upsampler = Decoder17_Upsampler(embed_dim, 256)
+            self.decoder24_upsampler = Decoder24_Upsampler(embed_dim, 320) # 
 
-            self.decoder11_upsampler = Decoder11_Upsampler(embed_dim, 128)
-            
-            self.decoder5_upsampler = Decoder5_Upsampler(embed_dim, 64)
+            operation_dict = {}
+            if len(output_layers) == 3:
+                self.decoder3_upsampler = Decoder17_Upsampler(embed_dim, 256)
 
-            self.decoder0_upsampler = SingleConv3DBlock(in_chans, 32, kernel_size=3)
+                self.decoder2_upsampler = Decoder11_Upsampler(embed_dim, 128)
+                
+                self.decoder1_upsampler = Decoder5_Upsampler(embed_dim, 64)
+
+                self.decoder0_upsampler = SingleConv3DBlock(in_chans, 32, kernel_size=3)
+                # stage 0
+                # x before torch.Size([4, 1, 16, 224, 224])
+                # x after torch.Size([4, 32, 16, 224, 224])
+                # stage 1
+                # x before torch.Size([4, 32, 16, 224, 224])
+                # x after torch.Size([4, 64, 8, 112, 112])
+                # stage 2
+                # x before torch.Size([4, 64, 8, 112, 112])
+                # x after torch.Size([4, 128, 4, 56, 56])
+                # stage 3
+                # x before torch.Size([4, 128, 4, 56, 56])
+                # x after torch.Size([4, 256, 4, 28, 28])
+                # stage 4
+                # x before torch.Size([4, 256, 4, 28, 28])
+                # x after torch.Size([4, 320, 4, 14, 14])
+
+                operation_dict['17'] = self.decoder3_upsampler
+                operation_dict['11'] = self.decoder2_upsampler
+                operation_dict['5'] = self.decoder1_upsampler
+                 
+
+            elif len(output_layers) == 4:
+                # target 
+                # stage 0
+                # x before torch.Size([4, 1, 64, 128, 128])
+                # x after torch.Size([4, 32, 64, 128, 128])
+                # stage 1
+                # x before torch.Size([4, 32, 64, 128, 128])
+                # x after torch.Size([4, 64, 32, 64, 64])
+                # stage 2
+                # x before torch.Size([4, 64, 32, 64, 64])
+                # x after torch.Size([4, 128, 16, 32, 32])
+                # stage 3
+                # x before torch.Size([4, 128, 16, 32, 32])
+                # x after torch.Size([4, 256, 8, 16, 16])
+                # stage 4
+                # x before torch.Size([4, 256, 8, 16, 16])
+                # x after torch.Size([4, 320, 4, 8, 8])
+                # stage 5
+                # x before torch.Size([4, 320, 4, 8, 8])
+                # x after torch.Size([4, 320, 4, 4, 4])
+                # print("input shape", x.shape)
+                self.decoder4_upsampler = Decoder24_Upsampler(embed_dim, 320)
+                operation_dict['19'] = self.decoder4_upsampler
+                operation_dict['15'] = self.decoder3_upsampler
+                operation_dict['10'] = self.decoder2_upsampler
+                operation_dict['5'] = self.decoder1_upsampler
+            self.operation_dict = operation_dict
 
         else:
             raise NotImplementedError
@@ -405,17 +455,15 @@ class VideoMAE_Encoder(nn.Module):
         x = x.view([N, -1, C]) + pos_embed
 
         # apply Transformer blocks
-        
         for layer_i, blk in enumerate(self.blocks):
             x = blk(x)
             if layer_i in self.intermediate_feat_layer:
                 intermediate_feat = self.convert_to_3d_tensor(x)
-                if layer_i == 5:
-                    intermediate_feat = self.decoder5_upsampler(intermediate_feat)
-                elif layer_i == 11:
-                    intermediate_feat = self.decoder11_upsampler(intermediate_feat)
-                elif layer_i == 17:
-                    intermediate_feat = self.decoder17_upsampler(intermediate_feat)
+
+                if layer_i in self.output_layers:
+                    intermediate_feat = self.operation_dict[str(layer_i)](intermediate_feat)
+                    print("layer", layer_i)
+                    print("intermediate_feat", intermediate_feat.size())
                 multi_scale_feat.append(intermediate_feat)
 
 

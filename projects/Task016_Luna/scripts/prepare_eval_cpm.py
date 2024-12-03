@@ -25,7 +25,8 @@ if __name__ == '__main__':
 
     raw_splitted_images = Path(os.getenv("det_data")) / "Task016_Luna" / "raw_splitted" / "imagesTr"
 
-    prediction_dir = model_dir / "consolidated" / "val_predictions"
+    # prediction_dir = model_dir / "consolidated" / "val_predictions"
+    prediction_dir = model_dir / "fold0" / "val_predictions"
     assert prediction_dir.is_dir()
 
     logger.remove()

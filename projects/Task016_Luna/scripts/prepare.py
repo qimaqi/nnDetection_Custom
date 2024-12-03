@@ -113,10 +113,11 @@ def main():
     parser.add_argument('--num_processes', type=int, default=4, required=False,
                         help="Number of processes to use for preparation.")
     args = parser.parse_args()
+    exp_name = 'Task018_Luna64x128'
     num_processes = args.num_processes
 
     det_data_dir = Path(os.getenv('det_data'))
-    task_data_dir = det_data_dir / "Task016_Luna"
+    task_data_dir = det_data_dir / exp_name
     source_data_dir = task_data_dir / "raw"
 
     if not source_data_dir.is_dir():
@@ -140,7 +141,7 @@ def main():
 
     meta = {
         "name": "Luna",
-        "task": "Task016_Luna",
+        "task": "Task018_Luna64x128",
 
         "target_class": None,
         "test_labels": False,

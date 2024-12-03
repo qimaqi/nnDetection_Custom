@@ -1,14 +1,13 @@
 #!/bin/bash
 #SBATCH --job-name=nndet_luna
-#SBATCH --output=sbatch_log/baseline_nndet_%j.out
+#SBATCH --output=sbatch_log/mae_nndet_%j.out
 #SBATCH --nodes=1
 #SBATCH --time=48:00:00
 #SBATCH --gres=gpu:1
 
-#SBATCH --nodelist=bmicgpu07
+#SBATCH --nodelist=bmicgpu08
 #SBATCH --cpus-per-task=4
-#SBATCH --mem-per-cpu=16GB
-##SBATCH --mem 32GB
+#SBATCH --mem 96GB
 
 ##SBATCH --account=staff 
 ##SBATCH --gres=gpu:1
@@ -22,13 +21,11 @@
 
 
 source /scratch_net/schusch/qimaqi/miniconda3/etc/profile.d/conda.sh
-conda activate nndet_venv
+conda activate nndet_swin
 
 export CUDA_HOME=$CONDA_PREFIX
 export PATH=$CUDA_HOME/bin:$PATH
 export PATH=/scratch_net/schusch/qimaqi/install_gcc:$PATH
-# export CC=/scratch_net/schusch/qimaqi/install_gcc/bin/gcc-11.3.0
-# export CXX=/scratch_net/schusch/qimaqi/install_gcc/bin/g++-11.3.0
 
 export CXX=$CONDA_PREFIX/bin/x86_64-conda_cos6-linux-gnu-c++
 export CC=$CONDA_PREFIX/bin/x86_64-conda_cos6-linux-gnu-cc
@@ -37,9 +34,12 @@ export det_data="/usr/bmicnas01/data-biwi-01/ct_video_mae_bmicscratch/data/nnDet
 export det_models="/usr/bmicnas01/data-biwi-01/ct_video_mae_bmicscratch/data/nnDet_models"
 export OMP_NUM_THREADS=1
 
+# export CC=/scratch_net/schusch/qimaqi/install_gcc/bin/gcc-11.3.0
+# export CXX=/scratch_net/schusch/qimaqi/install_gcc/bin/g++-11.3.0
+
 # nndet_example
 # nndet_prep 016 
 # nndet_unpack ${det_data}/Task000D3_Example/preprocessed/D3V001_3d/imagesTr 6
 # nndet_unpack ${det_data}/Task016_Luna/preprocessed/D3V001_3d/imagesTr 6
 
-nndet_train 017 -o exp.fold=0 train=mae
+nndet_train 017 -o exp.fold=1 train=mae

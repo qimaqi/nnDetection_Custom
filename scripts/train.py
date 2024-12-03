@@ -262,6 +262,10 @@ def _train(
     if cfg["train"]["mode"].lower() == "resume":
         trainer_kwargs["resume_from_checkpoint"] = train_dir / "model_last.ckpt"
 
+    if cfg['trainer_cfg']['gradient_clip_val'] > 0:
+        logger.info(f"Gradient clipping enabled with value {cfg['trainer_cfg']['gradient_clip_val']}")
+        trainer_kwargs["gradient_clip_val"] = cfg['trainer_cfg']['gradient_clip_val']
+
     num_gpus = cfg["trainer_cfg"]["gpus"]
     logger.info(f"Using {num_gpus} GPUs for training")
     plugins = cfg["trainer_cfg"].get("plugins", None)

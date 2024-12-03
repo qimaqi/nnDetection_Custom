@@ -1037,7 +1037,7 @@ class VideoMAEUNetModule(LightningBaseModuleSWA):
         # configure optimizer
         logger.info(f"Running: initial_lr {self.trainer_cfg['initial_lr']} "
                     f"weight_decay {self.trainer_cfg['weight_decay']} "
-                    f"SGD with momentum {self.trainer_cfg['sgd_momentum']} and "
+                    f"ADAMW with momentum {self.trainer_cfg['sgd_momentum']} and "
                     f"nesterov {self.trainer_cfg['sgd_nesterov']}")
         
         if self.trainer_cfg["seperate_lr"]:
@@ -1058,8 +1058,10 @@ class VideoMAEUNetModule(LightningBaseModuleSWA):
                 weight_decay=self.trainer_cfg["weight_decay"],
                 betas=(0.9, 0.95),
                 )
+            
         num_iterations = self.trainer_cfg["max_num_epochs"] * \
             self.trainer_cfg["num_train_batches_per_epoch"]
+        
         import transformers
         scheduler = transformers.get_cosine_schedule_with_warmup(optimizer=optimizer,num_warmup_steps=self.trainer_cfg["warm_iterations"], num_training_steps=num_iterations)  
     

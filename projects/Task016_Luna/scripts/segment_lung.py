@@ -315,14 +315,14 @@ def proces_and_segm(data,f):
 
         Mask = m1+m2
 
-        newshape = np.round(np.array(Mask.shape)*spacing/resolution)#
+        # newshape = np.round(np.array(Mask.shape)*spacing/resolution)#
         xx,yy,zz= np.where(Mask)
         box = np.array([[np.min(xx),np.max(xx)],[np.min(yy),np.max(yy)],[np.min(zz),np.max(zz)]])
-        box = box*np.expand_dims(spacing,1)/np.expand_dims(resolution,1)#
+        # box = box*np.expand_dims(spacing,1)/np.expand_dims(resolution,1)#
         box = np.floor(box).astype('int')
-        margin = 5
-        extendbox = np.vstack([np.max([[0,0,0],box[:,0]-margin],0),np.min([newshape,box[:,1]+2*margin],axis=0).T]).T
-        extendbox = extendbox.astype('int')
+        # margin = 5
+        # extendbox = np.vstack([np.max([[0,0,0],box[:,0]-margin],0),np.min([newshape,box[:,1]+2*margin],axis=0).T]).T
+        # extendbox = extendbox.astype('int')
 
         # #convex_mask = m1
         dm1 = process_mask(m1)
@@ -345,10 +345,10 @@ def proces_and_segm(data,f):
         bones = sliceim*extramask>bone_thresh
         # bones = sliceim*extramask_1>bone_thresh #dilate only one lung
         sliceim[bones] = pad_value
-        sliceim1,_ = resample(sliceim,spacing,resolution,order=1)
-        sliceim2 = sliceim1[extendbox[0,0]:extendbox[0,1],
-                    extendbox[1,0]:extendbox[1,1],
-                    extendbox[2,0]:extendbox[2,1]]
+        # sliceim1,_ = resample(sliceim,spacing,resolution,order=1)
+        # sliceim2 = sliceim1[extendbox[0,0]:extendbox[0,1],
+        #             extendbox[1,0]:extendbox[1,1],
+        #             extendbox[2,0]:extendbox[2,1]]
         # sliceim = sliceim2[np.newaxis,...] # comment to not add new axis
         # Save the masks as .npy files
         
@@ -369,7 +369,7 @@ def proces_and_segm(data,f):
         #i want to know the max and min intensities after lumTrans
         # print('max:',np.max(sliceim2)) #should be between 0-255
         # print('min:',np.min(sliceim2))
-        return sliceim2
+        return sliceim
         
     except Exception as e:
         # Log the error to a file

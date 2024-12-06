@@ -2,7 +2,10 @@ import pickle
 import numpy as np
 import json
 
-file = '/usr/bmicnas01/data-biwi-01/ct_video_mae_bmicscratch/data/nnDet_raw/Task000D3_Example/preprocessed/D3V001_3d.pkl'
+file = '/usr/bmicnas01/data-biwi-01/ct_video_mae_bmicscratch/data/nnDet_raw/Task018_Luna64x128/preprocessed/D3V001_3d.pkl'
+#'/usr/bmicnas01/data-biwi-01/ct_video_mae_bmicscratch/data/nnDet_raw/Task018_Luna64x128/preprocessed/D3V001_3d/imagesTr/1_3_6_1_4_1_14519_5_2_1_6279_6001_219909753224298157409438012179_boxes.pkl'
+# '/usr/bmicnas01/data-biwi-01/ct_video_mae_bmicscratch/data/nnDet_raw/Task018_Luna64x128/preprocessed/D3V001_3d/imagesTr/1_3_6_1_4_1_14519_5_2_1_6279_6001_944888107209008719031293531091.pkl'
+# '/usr/bmicnas01/data-biwi-01/ct_video_mae_bmicscratch/data/nnDet_raw/Task016_Luna64x192/preprocessed/D3V001_3d.pkl'
 # '/usr/bmicnas01/data-biwi-01/ct_video_mae_bmicscratch/data/nnDet_raw/Task000D3_Example/preprocessed/properties/dataset_properties.pkl'
 
 
@@ -15,11 +18,12 @@ with open(file, 'rb') as f:
 for key, value in data.items():
     print(key, value)
     
-# data['patch_size']= [32,224,224]
-# data['batch_size']= 1
-# save_pkl = '/usr/bmicnas01/data-biwi-01/ct_video_mae_bmicscratch/data/nnDet_raw/Task000D3_Example/preprocessed/D3V001_3d.pkl'
-# with open(save_pkl, 'wb') as f:
-#     pickle.dump(data, f)
+data['patch_size']= [64,128,128]
+
+save_pkl = '/usr/bmicnas01/data-biwi-01/ct_video_mae_bmicscratch/data/nnDet_raw/Task018_Luna64x128/preprocessed/D3V001_3d.pkl'
+with open(save_pkl, 'wb') as f:
+    pickle.dump(data, f)
+
 
 # map pkl to json, save json, include numpy arrays, int64, float64 in json
 # def map_pkl_to_json(data):
@@ -64,3 +68,9 @@ for key, value in data.items():
 # median_shape_transposed [256. 256. 256.]
 # do_dummy_2D_data_aug False
 # trigger_lr1 False
+
+
+# patch_size [ 80 192 192]
+# batch_size 4
+# architecture {'arch_name': 'RetinaUNetV001', 'max_channels': 320, 'start_channels': 32, 'fpn_channels': 128, 'head_channels': 128, 'classifier_classes': 1, 'seg_classes': 1, 'in_channels': 1, 'dim': 3, 'class_weight': [0.5, 0.0], 'conv_kernels': [[3, 3, 3], [3, 3, 3], [3, 3, 3], [3, 3, 3], [3, 3, 3], [3, 3, 3]], 'strides': [[2, 2, 2], [2, 2, 2], [2, 2, 2], [2, 2, 2], [1, 2, 2]], 'decoder_levels': (2, 3, 4, 5)}
+# anchors {'width': [(4.0, 6.0, 5.0), (8.0, 12.0, 10.0), (16.0, 24.0, 20.0), (16.0, 24.0, 20.0)], 'height': [(6.0, 8.0, 10.0), (12.0, 16.0, 20.0), (24.0, 32.0, 40.0), (48.0, 64.0, 80.0)], 'depth': [(8.0, 6.0, 10.0), (16.0, 12.0, 20.0), (32.0, 24.0, 40.0), (64.0, 48.0, 80.0)], 'stride': 1}

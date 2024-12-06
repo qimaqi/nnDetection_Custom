@@ -46,7 +46,7 @@ trainer_cfg:
   num_val_batches_per_epoch: 100 # number of val batches per epoch
 
   initial_lr: 1.e-4 # initial learning rate to start with
-  seperate_lr: False
+  seperate_lr: True
   sgd_momentum: 0.9 # momentum term
   sgd_nesterov: True # nesterov momentum
   weight_decay: 1.e-6 # weight decay for optimizer
@@ -62,19 +62,19 @@ trainer_cfg:
 
 model_cfg:
   encoder_kwargs:
-    img_size: 224
+    img_size: 128
     patch_size: 16
-    num_frames: 16
+    num_frames: 64
     in_chans: 3
     embed_dim: 1024
     depth: 24
     num_heads: 16
     mlp_ratio: 4.0
-    t_patch_size: 2 
+    t_patch_size: 8 
     no_qkv_bias: False 
     sep_pos_embed: True
     map_to_decoder_type: "conv"
-    output_layers: [5, 11, 17, 23] # [0, 5, 11, 17, 23] for 16x224x224, [0, 5, 10, 15, 20, 23] for 64x128x128
+    output_layers: [5,10,15,19,23] # [0, 5, 11, 17, 23] for 16x224x224, [0, 5, 10, 15, 20, 23] for 64x128x128
     pretrained_path: /scratch_net/schusch/qimaqi/cbct_proj/CBCT/Video_MAE_Seg/checkpoints/mae_pretrain_vit_large_k700.pth
 
   decoder_kwargs: # keyword arguments passed to decoder

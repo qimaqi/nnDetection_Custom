@@ -48,4 +48,39 @@ export OMP_NUM_THREADS=1
 
 # nndet_sweep 016 RetinaUNetV001_D3V001_3d 0
 
-nndet_train 016 -o exp.fold=1 
+nndet_train 016 -o exp.fold=0 train=v001
+
+
+# ====================================
+# INFO Architecture overwrites: {} Anchor overwrites: {}
+# INFO Building architecture according to plan of RetinaUNetV001
+# INFO Start channels: 32; head channels: 128; fpn channels: 128
+# INFO Discarding anchor generator kwargs {'stride': 1}
+# INFO Building:: encoder Encoder: {} 
+# INFO Building:: decoder UFPNModular: {'min_out_channels': 8, 'upsampling_mode': 'transpose', 'num_lateral': 1, 'norm_lateral': False, 'activation_lateral': False, 'num_out': 1, 'norm_out': False, 'activation_out': False}
+# INFO Running ATSS Matching with num_candidates=4 and center_in_gt False.
+# INFO Building:: classifier BCECLassifier: {'num_convs': 1, 'norm_channels_per_group': 16, 'norm_affine': True, 'reduction': 'mean', 'loss_weight': 1.0, 'prior_prob': 0.01}
+# INFO Init classifier weights: prior prob 0.01
+# INFO Building:: regressor GIoURegressor: {'num_convs': 1, 'norm_channels_per_group': 16, 'norm_affine': True, 'reduction': 'sum', 'loss_weight': 1.0, 'learn_scale': True}
+# ====================================
+# GIoURegressor
+# anchors_per_pos 27
+# INFO Learning level specific scalar in regressor
+# INFO Overwriting regressor conv weight init
+# INFO Building:: head DetectionHeadHNMNative: {} sampler HardNegativeSamplerBatched: {'batch_size_per_image': 32, 'positive_fraction': 0.33, 'pool_size': 20, 'min_neg': 1}
+# INFO Sampling hard negatives on a per batch basis
+# INFO Building:: segmenter DiCESegmenterFgBg {'dice_kwargs': {'batch_dice': True}}
+# INFO Running batch dice True and do bg False in dice loss.
+# INFO Model Inference Summary: 
+# detections_per_img: 100 
+# score_thresh: 0 
+# topk_candidates: 10000 
+# remove_small_boxes: 0.01 
+# nms_thresh: 0.6
+
+# INFO Initialize SWA with swa epoch start 49
+# INFO Using dummy 2d augmentation params
+# INFO Running dummy 2d augmentation transforms!
+# INFO Augmentation: BaseMoreAug transforms and base_more params 
+# INFO Loading network patch size [ 16 224 224] and generator patch size [16, 320, 320]
+# LOCAL_RANK: 0 - CUDA_VISIBLE_DEVICES: [0]

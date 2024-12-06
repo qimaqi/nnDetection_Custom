@@ -26,12 +26,92 @@ class Decoder_Map(nn.Module):
         # output_size [D', H', W']
         input_size = np.array(input_size)
         output_size = np.array(output_size)
+
+        # we need to decide a plan for map to decoder target size
+        
         assert (input_size % 2 == 0).all() and (output_size % 2 == 0).all()
         assert len(input_size) == len(output_size)
-        rescale_ratio = input_size // output_size
-        # TODO
-        if rescale_ratio[0] > 1:
-            pooling_kernel = (rescale_ratio[0], 1, 1)
+        rescale_ratio = input_size / output_size
+        
+        if np.any(rescale_ratio > 1):
+            pooling_kernel = (int(rescale_ratio[0]), int(max(1, rescale_ratio[1])), int(max(1, rescale_ratio[2]))) # TODO assume only the first layer might be smaller
+            stride = pooling_kernel
+            self.pool = nn.MaxPool3d(kernel_size=pooling_kernel, stride=stride)
+            self.pool_size = [input_size[0] // pooling_kernel[0], input_size[1] // pooling_kernel[1], input_size[2] // pooling_kernel[2]]
+        else:
+            self.pool = nn.Identity()
+            self.pool_size = input_size
+
+        print("rescale_ratio", rescale_ratio)
+        print("self.pool_size", self.pool_size)
+        print("output_size", output_size)
+        print("output plane", out_planes)
+
+
+        if np.any(self.pool_size != output_size):
+            target_upsample_ratios = output_size // self.pool_size
+            # first decide how many layers we need to upsample
+            max_upsample_ratio = max(target_upsample_ratios)
+            stages = (np.log2(max_upsample_ratio)).astype(int)
+            upsample_stop_stages = (np.log2(target_upsample_ratios)).astype(int)
+            print("### upsample_stop_stages ### ", upsample_stop_stages)
+            self.blocks = []
+            if stages == 1:
+                features = [in_planes, out_planes]
+            elif stages == 2:
+                features = [in_planes, 512, out_planes]
+            elif stages == 3:
+                features = [in_planes, 512, 256, out_planes]
+            elif stages >= 4:
+                raise NotImplementedError("Too many stages")
+
+
+            for i in range(stages):
+                # check first dimension
+                upsample_kernels = [2, 2, 2]
+                strides = [2, 2, 2]
+                for j in range(3):
+                    if i >= upsample_stop_stages[j]:
+                        upsample_kernels[j] = 1
+                        strides[j] = 1
+
+                print("i", i, "upsample_kernels", upsample_kernels, "strides", strides, "features", features[i], features[i+1])
+                self.blocks.append(nn.ConvTranspose3d(features[i], features[i+1], kernel_size=upsample_kernels, stride=strides, padding=0, output_padding=0))
+
+            # if rescale_ratio[1] == 1/2:
+            #     self.blocks.append(nn.ConvTranspose3d(in_planes, out_planes, kernel_size=(1,2,2), stride=(1,2,2), padding=0, output_padding=0))
+            
+            # elif rescale_ratio[1] == 1/4:
+            #     self.blocks.append(nn.ConvTranspose3d(in_planes, 512, kernel_size=(1,2,2), stride=(1,2,2), padding=0, output_padding=0))
+            #     self.blocks.append(nn.ConvTranspose3d(512, out_planes, kernel_size=(1,2,2), stride=(1,2,2), padding=0, output_padding=0))
+
+            # elif rescale_ratio[1] == 1/8:
+            #     self.blocks.append(nn.ConvTranspose3d(in_planes, 512, kernel_size=(1,2,2), stride=(1,2,2), padding=0, output_padding=0))
+            #     self.blocks.append(nn.ConvTranspose3d(512, 256, kernel_size=(1,2,2), stride=(1,2,2), padding=0, output_padding=0))
+            #     self.blocks.append(nn.ConvTranspose3d(256, out_planes, kernel_size=(1,2,2), stride=(1,2,2), padding=0, output_padding=0))
+            
+            # elif rescale_ratio[1] == 2.:
+            #     pooling_kernel = (output_size[0]//self.pool_size[0], output_size[1]//self.pool_size[1], output_size[2]//self.pool_size[2])
+            #     stride = pooling_kernel
+            #     # self.blocks.append(nn.MaxPool3d(kernel_size=pooling_kernel, stride=stride))
+            #     self.blocks.append(Conv3DBlock(in_planes, out_planes))
+
+            self.blocks = nn.Sequential(*self.blocks)
+        else:
+            self.blocks = [Conv3DBlock(in_planes, out_planes)]
+            self.blocks = nn.Sequential(*self.blocks)
+
+
+
+    def forward(self, x):
+        # print("debugging pool input", x.size())
+        x = self.pool(x)
+        # print("debugging pool output", x.size())
+        for block in self.blocks:
+            x = block(x)
+            # print("debugging block output", x.size())
+        return x 
+
 
 
 

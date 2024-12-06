@@ -137,7 +137,7 @@ def main():
     num_processes = args.num_processes
 
     det_data_dir = Path(os.getenv('det_data'))
-    task_data_dir = det_data_dir / "Task017_Luna_custom/"
+    task_data_dir = det_data_dir / "Task019_Luna64x128C/"
     source_data_dir = task_data_dir / "raw"
 
     if not source_data_dir.is_dir():
@@ -161,7 +161,7 @@ def main():
 
     meta = {
         "name": "Luna",
-        "task": "Task017_Luna_custom/",
+        "task": "Task019_Luna64x128C/",
 
         "target_class": None,
         "test_labels": False,

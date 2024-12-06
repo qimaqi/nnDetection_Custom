@@ -169,6 +169,7 @@ class Datamodule(BaseModule):
             params.update(overwrites_2d)
         elif dim == 3 and self.plan['do_dummy_2D_data_aug']:
             logger.info("Using dummy 2d augmentation params")
+            logger.info(self.plan)
             params["dummy_2D"] = True
             params["elastic_deform_alpha"] = params["2d_overwrites"]["elastic_deform_alpha"]
             params["elastic_deform_sigma"] = params["2d_overwrites"]["elastic_deform_sigma"]

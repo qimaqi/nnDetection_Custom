@@ -119,6 +119,7 @@ class DataLoader3DFast(FixedSlimDataLoaderBase):
         if (p := Path(self._data[k]['data_file'])).is_file():
             data = np.load(str(p), self.memmap_mode, allow_pickle=False)
         else:
+            print("k", k, self._data[k])
             raise RuntimeError("You shall not pass! Unpack data first!")
 
         if (p := Path(self._data[k]['seg_file'])).is_file():

@@ -192,6 +192,9 @@ class BoxC002(BoxC001):
             elif len(self.model_cfg['encoder_kwargs']['img_size']) == 3:
                 patch_size = self.model_cfg['encoder_kwargs']['img_size']
             print("manual set patch size", patch_size)
+        elif 'plan_size' in self.model_cfg['encoder_kwargs'].keys():
+            patch_size = self.model_cfg['encoder_kwargs']['plan_size']
+            print("manual set patch size", patch_size)
         else:
             print("auto set patch size")
             patch_size = np.asarray(self._get_initial_patch_size(

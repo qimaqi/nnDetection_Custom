@@ -22,9 +22,36 @@ from nndet.arch.encoder.abstract import AbstractEncoder
 from nndet.arch.blocks.basic import AbstractBlock
 from nndet.arch.encoder.videomae_encoder import VideoMAE_Encoder, load_pretrained_weights_encoder
 from nndet.arch.encoder.swinunetr import SwinUNETR_Encoder
-
+import numpy as np
 
 __all__ = ["Encoder", "VideoMAEEncoder", "SwinUnetrEncoder"]
+
+
+def calculate_3dconv_output_shape(input_shape, conv_kernels, strides, start_channels=1, max_channels=320):
+    # input_shape: (B, F, H, W, Z) => tuple (B, F, H, W, Z)
+    F, H, W, Z = input_shape
+    
+    output_shapes = [(start_channels, H, W, Z)]
+    F_last = start_channels
+    # Loop through each layer's kernel and stride
+    # print("conv_kernels", conv_kernels)
+    # print("strides", strides)
+    for kernel, stride in zip(conv_kernels, strides):
+        # Compute the output height, width, and depth using the formula
+        # TODO
+        out_H = (H ) // stride[0] 
+        out_W = (W ) // stride[1] 
+        out_Z = (Z ) // stride[2]
+        
+        F_last = min(max_channels, F_last*2)
+        # Store the output shape for the current layer
+        output_shapes.append((F_last, out_H, out_W, out_Z))
+        
+        
+        # Update the dimensions for the next layer
+        H, W, Z = out_H, out_W, out_Z
+    
+    return output_shapes
 
 
 def dummy_calculate_output_channel(conv_kernels, in_channels, plan_cfg, model_cfg):
@@ -154,6 +181,8 @@ class Encoder(AbstractEncoder):
         # x before torch.Size([4, 320, 4, 8, 8])
         # x after torch.Size([4, 320, 4, 4, 4])
         # print("input shape", x.shape)
+        #  [(32, 64, 128, 128), (64, 32, 64, 64), (128, 16, 32, 32), (256, 8, 16, 16), (320, 4, 8, 8), (320, 4, 4, 4)]
+        # 
         for stage_id, module in enumerate(self.stages):
             # print("stage", stage_id)
             # print("x before", x.shape)
@@ -260,23 +289,32 @@ class VideoMAEEncoder(AbstractEncoder):
         """init some parameters"""
         """some other parameters can change from model config"""
         encoder_cfg = model_cfg["encoder_kwargs"]
+        feature_shapes = calculate_3dconv_output_shape([self.dim, encoder_cfg["num_frames"],encoder_cfg["img_size"] ,encoder_cfg["img_size"] ],
+                                                       conv_kernels, strides, start_channels, max_channels)
+                                                       
+        print("feature_shapes", feature_shapes)
+        feature_shapes = np.array(feature_shapes)
+
         self.stages = VideoMAE_Encoder(
             img_size=encoder_cfg["img_size"], 
             patch_size=encoder_cfg["patch_size"],
             num_frames=encoder_cfg["num_frames"],
             map_to_decoder_type=encoder_cfg["map_to_decoder_type"],
             output_layers=encoder_cfg["output_layers"],
+            feature_shapes=feature_shapes,
+            t_patch_size=encoder_cfg["t_patch_size"],
         )
 
         if encoder_cfg['pretrained_path'] is not None:
             load_pretrained_weights_encoder(self.stages, encoder_cfg)
 
-        if len(conv_kernels) == 5: 
-            # using 16x224x224 input
-            self.out_channels = [32, 64, 128, 256, 320] # TODO
-        elif len(conv_kernels) == 6:
-            # using 64x128x128 input
-            self.out_channels = [32, 64, 128, 256, 320, 320]
+        self.out_channels = feature_shapes[:, 0].tolist()
+        # if len(conv_kernels) == 5: 
+        #     # using 16x224x224 input
+        #     self.out_channels = [32, 64, 128, 256, 320] # TODO
+        # elif len(conv_kernels) == 6:
+        #     # using 64x128x128 input
+        #     self.out_channels = [32, 64, 128, 256, 320, 320]
 
         # for stage_id in range(self.num_stages):
         #     if stage_id == 0:
@@ -417,6 +455,13 @@ class SwinUnetrEncoder(AbstractEncoder):
         """init some parameters"""
         """some other parameters can change from model config"""
         encoder_cfg = model_cfg["encoder_kwargs"]
+
+        feature_shapes = calculate_3dconv_output_shape([self.dim, encoder_cfg["img_size"][0], encoder_cfg["img_size"][1], encoder_cfg["img_size"][2]],
+                                                       conv_kernels, strides, start_channels, max_channels)
+                                                       
+        print("feature_shapes", feature_shapes)
+        feature_shapes = np.array(feature_shapes)
+
         self.stages = SwinUNETR_Encoder(
             img_size=encoder_cfg["img_size"], 
             in_channels=in_channels,
@@ -424,14 +469,17 @@ class SwinUnetrEncoder(AbstractEncoder):
             num_heads=encoder_cfg["num_heads"],
             feature_size=encoder_cfg["feature_size"],
             map_to_decoder_type=encoder_cfg["map_to_decoder_type"],
-            pretrained_path=encoder_cfg["pretrained_path"],
+            feature_shapes=feature_shapes,
         )
 
         if encoder_cfg['pretrained_path'] is not None:
-            load_pretrained_weights_encoder(self.stages, encoder_cfg)
+            # load_pretrained_weights_encoder_swinunetr(self.stages, encoder_cfg)
+            weights = torch.load(encoder_cfg['pretrained_path'])
+            print("weights", weights['state_dict'].keys())
+            self.stages.load_from(weights)
 
         
-        self.out_channels = [32, 64, 128, 256, 320, 320] # TODO
+        self.out_channels = feature_shapes[:, 0].tolist()
 
         # for stage_id in range(self.num_stages):
         #     if stage_id == 0:

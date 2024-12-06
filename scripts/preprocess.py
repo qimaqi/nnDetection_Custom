@@ -165,6 +165,7 @@ def run_planning_and_process(
         model_name=model_name,
         model_cfg=model_cfg,
     )
+    # check if this step already create plans or not
     if run_preprocessing:
         for plan_id in plan_identifiers:
             plan = load_pickle(preprocessed_output_dir / plan_id)

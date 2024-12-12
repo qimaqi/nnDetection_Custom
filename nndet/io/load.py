@@ -167,7 +167,8 @@ def npy_dataset(folder: str, processes: int,
 
 def unpack_dataset(folder: Pathlike,
                    processes: int,
-                   delete_npz: bool = False):
+                   delete_npz: bool = False,
+                   to_int=False):
     """
     unpacks all npz files in a folder to npy
     (whatever you want to have unpacked must be saved under key)
@@ -180,11 +181,14 @@ def unpack_dataset(folder: Pathlike,
     """
     logger.info("Unpacking dataset")
     npz_files = subfiles(Path(folder), identifier="*.npz", join=True)
+    logger.info(f"Found {len(npz_files)} files to unpack")
+    logger.info(f"Delete npz files after conversion: {delete_npz}")
+    logger.info(f"Convert to int: {to_int}")
     if not npz_files:
         logger.warning(f'No paths found in {Path(folder)} matching *.npz')
         return
     with Pool(processes) as p:
-        p.starmap(npz2npy, zip(npz_files, repeat(delete_npz)))
+        p.starmap(npz2npy, zip(npz_files, repeat(delete_npz), repeat(to_int)))
 
 
 def pack_dataset(folder, processes: int, key: str):
@@ -202,7 +206,7 @@ def pack_dataset(folder, processes: int, key: str):
         p.starmap(npy2npz, zip(npy_files, repeat(key)))
 
 
-def npz2npy(npz_file: str, delete_npz: bool = False):
+def npz2npy(npz_file: str, delete_npz: bool = False, to_int=False):
     """
     convert npz to npy
 
@@ -212,6 +216,27 @@ def npz2npy(npz_file: str, delete_npz: bool = False):
     """
     if not os.path.isfile(npz_file[:-3] + "npy"):
         a = load_npz_looped(npz_file, keys=["data", "seg"], num_tries=3)
+        # check a["data"] type and min max
+        # check a["seg"] type and min max
+        # print(a["data"].dtype, a["data"].min(), a["data"].max())
+        # print(a["seg"].dtype, a["seg"].min(), a["seg"].max())
+        
+        if to_int:
+            min_val = -2.1
+            max_val = 4.7
+            assert a["data"].min() >= min_val, f"min value {a['data'].min()} is smaller than {min_val}"
+            assert a["data"].max() <= max_val, f"max value {a['data'].max()} is larger than {max_val}"
+            
+            data = a["data"]
+            seg = a["seg"]
+            a["data"] = (((data- min_val) / (max_val - min_val)) * 255).astype(np.uint8)
+            a["seg"] = seg.astype(np.int8)
+
+
+            # print('map',a["data"].dtype, a["data"].min(), a["data"].max())
+            # print('map',a["seg"].dtype, a["seg"].min(), a["seg"].max())
+
+
         if a is not None:
             np.save(npz_file[:-3] + "npy", a["data"])
             np.save(npz_file[:-4] + "_seg.npy", a["seg"])

@@ -180,10 +180,11 @@ def unpack():
     parser = argparse.ArgumentParser()
     parser.add_argument('path', type=Path, help="Path to folder to unpack")
     parser.add_argument('num_processes', type=int, help="number of processes to use for unpacking")
+    parser.add_argument('--to_int', action='store_true', help="convert labels to int", default=False)
     args = parser.parse_args()
     p = args.path
     num_processes = args.num_processes
-    unpack_dataset(p, num_processes, False)
+    unpack_dataset(p, num_processes, False, to_int=args.to_int)
 
 
 def hydra_searchpath():

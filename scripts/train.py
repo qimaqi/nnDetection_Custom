@@ -109,6 +109,7 @@ def evaluate():
     parser.add_argument('model', type=str, help="model name, e.g. RetinaUNetV0_D3V001_3d")
     parser.add_argument('fold', type=int, help="fold, -1 => consolidated")
 
+    parser.add_argument('--shape', type=str, help="shape of the input data", default="16x224x224")
     parser.add_argument('--test',
                         help="Evaluate test predictions -> uses different folder",
                         action='store_true')
@@ -141,6 +142,7 @@ def evaluate():
         do_seg_eval=do_seg_eval,
         do_instances_eval=do_instances_eval,
         do_analyze_boxes=do_analyze_boxes,
+        shape=args.shape,
     )
 
 
@@ -149,7 +151,13 @@ def init_train_dir(cfg) -> Path:
     Initialize training directory and make it the current working directory
     """
     # determine folder for experiment
-    output_dir = Path(cfg.host.parent_results) / str(cfg.task) / str(cfg.exp.id) / f"fold{cfg.exp.fold}"
+    if cfg.augment_cfg.patch_size is not None:
+        input_patch_size = (cfg.augment_cfg.patch_size)
+        input_patch_size = '_'.join([str(i) for i in input_patch_size])
+    else:
+        input_patch_size = 'auto'
+
+    output_dir = Path(cfg.host.parent_results) / str(cfg.task) / str(cfg.exp.id) / input_patch_size / f"fold{cfg.exp.fold}"
 
     if cfg["train"]["mode"].lower() == "overwrite":
         if output_dir.is_dir():
@@ -160,6 +168,9 @@ def init_train_dir(cfg) -> Path:
         if not output_dir.is_dir():
             raise ValueError(f"{output_dir} is not a valid training dir and thus can not be resumed")
     os.chdir(str(output_dir))
+
+    logger.info(f"Output dir: {output_dir}")
+
     return output_dir
 
 
@@ -238,6 +249,7 @@ def _train(
         model_cfg=OmegaConf.to_container(cfg["model_cfg"], resolve=True),
         trainer_cfg=OmegaConf.to_container(cfg["trainer_cfg"], resolve=True),
         plan=plan,
+        augment_cfg=OmegaConf.to_container(cfg["augment_cfg"], resolve=True),
         )
     callbacks = []
     checkpoint_cb = ModelCheckpoint(
@@ -266,6 +278,15 @@ def _train(
         logger.info(f"Gradient clipping enabled with value {cfg['trainer_cfg']['gradient_clip_val']}")
         trainer_kwargs["gradient_clip_val"] = cfg['trainer_cfg']['gradient_clip_val']
 
+    if cfg["trainer_cfg"]["amp_backend"] is not None:
+        logger.info(f"Using AMP with backend {cfg['trainer_cfg']['amp_backend']}")
+        trainer_kwargs["amp_backend"] = cfg["trainer_cfg"]["amp_backend"]
+
+    if cfg["trainer_cfg"]["amp_level"] is not None:
+        logger.info(f"Using AMP with level {cfg['trainer_cfg']['amp_level']}")
+        trainer_kwargs["amp_level"] = cfg["trainer_cfg"]["amp_level"]
+
+
     num_gpus = cfg["trainer_cfg"]["gpus"]
     logger.info(f"Using {num_gpus} GPUs for training")
     plugins = cfg["trainer_cfg"].get("plugins", None)
@@ -275,8 +296,6 @@ def _train(
         gpus=list(range(num_gpus)) if num_gpus > 1 else num_gpus,
         accelerator=cfg["trainer_cfg"]["accelerator"],
         precision=cfg["trainer_cfg"]["precision"],
-        amp_backend=cfg["trainer_cfg"]["amp_backend"],
-        amp_level=cfg["trainer_cfg"]["amp_level"],
         benchmark=cfg["trainer_cfg"]["benchmark"],
         deterministic=cfg["trainer_cfg"]["deterministic"],
         callbacks=callbacks,
@@ -321,6 +340,17 @@ def _train(
                             **inference_plan,
                             )
 
+        if cfg['augment_cfg']['patch_size'] is not None:
+            input_patch_size = (cfg['augment_cfg']['patch_size'] )
+            input_patch_size = '_'.join([str(i) for i in input_patch_size])
+            print("Using patch size from config", input_patch_size)
+        else:
+            # read from plan
+            input_patch_size = plan['patch_size']
+            input_patch_size = '_'.join([str(i) for i in input_patch_size])
+            print("Using patch size from plan", input_patch_size)
+
+
         _evaluate(
             task=cfg["task"],
             model=cfg["exp"]["id"],
@@ -328,7 +358,11 @@ def _train(
             test=False,
             do_boxes_eval=True, # TODO: make this configurable
             do_analyze_boxes=True, # TODO: make this configurable
+            
         )
+
+    # try stop here
+    raise ValueError("Training finished")
 
 
 def _sweep(
@@ -410,6 +444,7 @@ def _evaluate(
     task: str,
     model: str,
     fold: int,
+    shape: str = "16_224_224",
     test: bool = False,
     do_case_eval: bool = False,
     do_boxes_eval: bool = False,
@@ -435,7 +470,7 @@ def _evaluate(
     # prepare paths
     task = get_task(task, name=True)
     model_dir = Path(os.getenv("det_models")) / task / model
-    training_dir = get_training_dir(model_dir, fold)
+    training_dir = get_training_dir(model_dir, fold, shape)
 
     data_dir_task = Path(os.getenv("det_data")) / task
     data_cfg = load_dataset_info(data_dir_task)

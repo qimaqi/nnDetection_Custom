@@ -52,7 +52,7 @@ from nndet.arch.heads.regressor import RegressorType, L1Regressor
 from nndet.arch.heads.comb import HeadType, DetectionHeadHNM
 from nndet.arch.heads.segmenter import SegmenterType, DiCESegmenter
 
-from nndet.training.optimizer import get_params_no_wd_on_norm, get_params_no_wd_on_norm_seperate_lr
+from nndet.training.optimizer import get_params_no_wd_on_norm, get_params_no_wd_on_norm_seperate_lr, get_params_no_wd_on_norm_freeze
 
 from nndet.training.learning_rate import LinearWarmupPolyLR
 
@@ -95,6 +95,7 @@ class RetinaUNetModule(LightningBaseModuleSWA):
                  model_cfg: dict,
                  trainer_cfg: dict,
                  plan: dict,
+                 augment_cfg: dict = None,
                  **kwargs
                  ):
         """
@@ -111,6 +112,7 @@ class RetinaUNetModule(LightningBaseModuleSWA):
             model_cfg=model_cfg,
             trainer_cfg=trainer_cfg,
             plan=plan,
+            augment_cfg=augment_cfg,
         )
 
         _classes = [f"class{c}" for c in range(plan["architecture"]["classifier_classes"])]
@@ -150,6 +152,11 @@ class RetinaUNetModule(LightningBaseModuleSWA):
         with torch.no_grad():
             batch = self.pre_trafo(**batch)
 
+        # print batch["data"] min max type
+        # print("batch data min max type", batch["data"].min(), batch["data"].max(), batch["data"].type(), batch["data"].shape)
+        # if batch["data"].max() > 235:
+        #     batch["data"] = batch["data"] / 255.0
+
         losses, _ = self.model.train_step(
             images=batch["data"],
             targets={
@@ -161,6 +168,9 @@ class RetinaUNetModule(LightningBaseModuleSWA):
             batch_num=batch_idx,
         )
         loss = sum(losses.values())
+        # print("====================================") # ['reg', 'cls', 'seg_ce', 'seg_dice'])
+        # print("losses key", losses.keys())
+
         return {"loss": loss, **{key: l.detach().item() for key, l in losses.items()}}
 
     def validation_step(self, batch, batch_idx):
@@ -822,6 +832,7 @@ class VideoMAEUNetModule(LightningBaseModuleSWA):
                  model_cfg: dict,
                  trainer_cfg: dict,
                  plan: dict,
+                 augment_cfg: dict=None,
                  **kwargs
                  ):
         """
@@ -838,6 +849,7 @@ class VideoMAEUNetModule(LightningBaseModuleSWA):
             model_cfg=model_cfg,
             trainer_cfg=trainer_cfg,
             plan=plan,
+            augment_cfg=augment_cfg,
         )
 
         _classes = [f"class{c}" for c in range(plan["architecture"]["classifier_classes"])]
@@ -876,6 +888,18 @@ class VideoMAEUNetModule(LightningBaseModuleSWA):
         """
         with torch.no_grad():
             batch = self.pre_trafo(**batch)
+
+        # print("batch data min max type", batch["data"].min(), batch["data"].max(), batch["data"].type(), batch["data"].shape)
+        # if batch["data"].max() > 235:
+        #     batch["data"] = batch["data"] / 255.0
+            # print("batch data min max type", batch["data"].min(), batch["data"].max(), batch["data"].type(), batch["data"].shape)
+
+        # print out trainable parameters
+        # for name, param in self.model.named_parameters():
+        #     if param.requires_grad:
+        #         print(name, "requires grad")
+        #     else:
+        #         print(name, "not requires grad")
 
         losses, _ = self.model.train_step(
             images=batch["data"],
@@ -1040,31 +1064,66 @@ class VideoMAEUNetModule(LightningBaseModuleSWA):
                     f"ADAMW with momentum {self.trainer_cfg['sgd_momentum']} and "
                     f"nesterov {self.trainer_cfg['sgd_nesterov']}")
         
-        if self.trainer_cfg["seperate_lr"]:
-            wd_groups = get_params_no_wd_on_norm_seperate_lr(self, weight_decay=self.trainer_cfg['weight_decay'],lr_encoder= self.trainer_cfg["initial_lr"], lr_other= self.trainer_cfg["initial_lr"]*10)
+        if not self.trainer_cfg["freeze_encoder"]:
+            if self.trainer_cfg["seperate_lr"]:
+                wd_groups = get_params_no_wd_on_norm_seperate_lr(self, weight_decay=self.trainer_cfg['weight_decay'],lr_encoder= self.trainer_cfg["initial_lr"], lr_other= self.trainer_cfg["initial_lr"]*10)
 
-            optimizer = torch.optim.AdamW(
-                wd_groups,
-                weight_decay=self.trainer_cfg["weight_decay"],
-                betas=(0.9, 0.95),
-                )
+                optimizer = torch.optim.AdamW(
+                    wd_groups,
+                    weight_decay=self.trainer_cfg["weight_decay"],
+                    betas=(0.9, 0.95),
+                    )
+                
+            else:
+                wd_groups = get_params_no_wd_on_norm(self, weight_decay=self.trainer_cfg['weight_decay'])
+
+                optimizer = torch.optim.AdamW(
+                    wd_groups,
+                    self.trainer_cfg["initial_lr"],
+                    weight_decay=self.trainer_cfg["weight_decay"],
+                    betas=(0.9, 0.95),
+                    )
+                
+
+            num_iterations = self.trainer_cfg["max_num_epochs"] * \
+                self.trainer_cfg["num_train_batches_per_epoch"]
             
+            # import transformers
+            # scheduler = transformers.get_cosine_schedule_with_warmup(optimizer=optimizer,num_warmup_steps=self.trainer_cfg["warm_iterations"], num_training_steps=num_iterations) 
+            scheduler = LinearWarmupPolyLR(
+                optimizer=optimizer,
+                warm_iterations=self.trainer_cfg["warm_iterations"],
+                warm_lr=self.trainer_cfg["warm_lr"],
+                poly_gamma=self.trainer_cfg["poly_gamma"],
+                num_iterations=num_iterations
+            )
+
         else:
-            wd_groups = get_params_no_wd_on_norm(self, weight_decay=self.trainer_cfg['weight_decay'])
+            print("Freezing encoder")
+            for name, param in self.model.named_parameters():
+                if "encoder" in name:
+                    param.requires_grad = False
 
-            optimizer = torch.optim.AdamW(
-                wd_groups,
-                self.trainer_cfg["initial_lr"],
-                weight_decay=self.trainer_cfg["weight_decay"],
-                betas=(0.9, 0.95),
-                )
-            
-        num_iterations = self.trainer_cfg["max_num_epochs"] * \
-            self.trainer_cfg["num_train_batches_per_epoch"]
-        
-        import transformers
-        scheduler = transformers.get_cosine_schedule_with_warmup(optimizer=optimizer,num_warmup_steps=self.trainer_cfg["warm_iterations"], num_training_steps=num_iterations)  
+            wd_groups = get_params_no_wd_on_norm_freeze(self, weight_decay=self.trainer_cfg['weight_decay'])
     
+            # if seperate the learning rate in encder and decoder
+            optimizer = torch.optim.SGD(
+                wd_groups,
+                1e-2,
+                weight_decay=3e-5,
+                momentum=0.9,
+                nesterov=True,
+                )
+            num_iterations = self.trainer_cfg["max_num_epochs"] * \
+                self.trainer_cfg["num_train_batches_per_epoch"]
+            scheduler = LinearWarmupPolyLR(
+                optimizer=optimizer,
+                warm_iterations=self.trainer_cfg["warm_iterations"],
+                warm_lr=1e-6,
+                poly_gamma=0.9,
+                num_iterations=num_iterations
+            )  
+
         return [optimizer], {'scheduler': scheduler, 'interval': 'step'}
 
     @classmethod
@@ -1547,6 +1606,7 @@ class SwinUnetrUNetModule(LightningBaseModuleSWA):
                  model_cfg: dict,
                  trainer_cfg: dict,
                  plan: dict,
+                 augment_cfg: dict=None,
                  **kwargs
                  ):
         """
@@ -1563,6 +1623,7 @@ class SwinUnetrUNetModule(LightningBaseModuleSWA):
             model_cfg=model_cfg,
             trainer_cfg=trainer_cfg,
             plan=plan,
+            augment_cfg=augment_cfg,
         )
 
         _classes = [f"class{c}" for c in range(plan["architecture"]["classifier_classes"])]
@@ -1601,6 +1662,9 @@ class SwinUnetrUNetModule(LightningBaseModuleSWA):
         """
         with torch.no_grad():
             batch = self.pre_trafo(**batch)
+
+        # if batch["data"].max() > 235:
+        #     batch["data"] = batch["data"] / 255.0
 
         losses, _ = self.model.train_step(
             images=batch["data"],
@@ -1785,8 +1849,15 @@ class SwinUnetrUNetModule(LightningBaseModuleSWA):
                 )
         num_iterations = self.trainer_cfg["max_num_epochs"] * \
             self.trainer_cfg["num_train_batches_per_epoch"]
-        import transformers
-        scheduler = transformers.get_cosine_schedule_with_warmup(optimizer=optimizer,num_warmup_steps=self.trainer_cfg["warm_iterations"], num_training_steps=num_iterations)  
+        # import transformers
+        # scheduler = transformers.get_cosine_schedule_with_warmup(optimizer=optimizer,num_warmup_steps=self.trainer_cfg["warm_iterations"], num_training_steps=num_iterations)  
+        scheduler = LinearWarmupPolyLR(
+            optimizer=optimizer,
+            warm_iterations=self.trainer_cfg["warm_iterations"],
+            warm_lr=self.trainer_cfg["warm_lr"],
+            poly_gamma=self.trainer_cfg["poly_gamma"],
+            num_iterations=num_iterations
+        )
     
         return [optimizer], {'scheduler': scheduler, 'interval': 'step'}
 

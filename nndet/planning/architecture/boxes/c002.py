@@ -186,14 +186,19 @@ class BoxC002(BoxC001):
         """
         self.estimator.batch_size = self.batch_size
         print("="*50)
-        if 'img_size' in self.model_cfg['encoder_kwargs'].keys():
-            if len(self.model_cfg['encoder_kwargs']['img_size']) == 1: #num_frames
-                patch_size = np.array([self.model_cfg['encoder_kwargs']['num_frames'],self.model_cfg['encoder_kwargs']['img_size'],self.model_cfg['encoder_kwargs']['img_size']])
-            elif len(self.model_cfg['encoder_kwargs']['img_size']) == 3:
-                patch_size = self.model_cfg['encoder_kwargs']['img_size']
-            print("manual set patch size", patch_size)
-        elif 'plan_size' in self.model_cfg['encoder_kwargs'].keys():
-            patch_size = self.model_cfg['encoder_kwargs']['plan_size']
+        # if 'img_size' in self.model_cfg['encoder_kwargs'].keys():
+        #     if len(self.model_cfg['encoder_kwargs']['img_size']) == 1: #num_frames
+        #         patch_size = np.array([self.model_cfg['encoder_kwargs']['num_frames'],self.model_cfg['encoder_kwargs']['img_size'],self.model_cfg['encoder_kwargs']['img_size']])
+        #     elif len(self.model_cfg['encoder_kwargs']['img_size']) == 3:
+        #         patch_size = self.model_cfg['encoder_kwargs']['img_size']
+        #     print("manual set patch size", patch_size)
+        # elif 'plan_size' in self.model_cfg['encoder_kwargs'].keys():
+        #     patch_size = self.model_cfg['encoder_kwargs']['plan_size']
+        #     print("manual set patch size", patch_size)
+        
+        if "patch_size" in self.model_cfg:
+            ps = self.model_cfg['patch_size']
+            patch_size = np.array(ps)
             print("manual set patch size", patch_size)
         else:
             print("auto set patch size")

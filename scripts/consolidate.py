@@ -88,6 +88,7 @@ def main():
     parser.add_argument('model', type=str,
                         help="model name, e.g. RetinaUNetV0",
                         )
+    parser.add_argument('--shape', type=str, default='16_224_224', required=True)
     parser.add_argument('-o', '--overwrites', type=str, nargs='+', required=False,
                         help="overwrites for config file. Only needed in case of box eval",
                         )
@@ -118,6 +119,7 @@ def main():
     model = args.model
     task = args.task
     ov = args.overwrites
+    shape = args.shape
 
     consolidate = args.consolidate
     num_folds = args.num_folds
@@ -132,7 +134,7 @@ def main():
                          "arguments or change to copy mode")
 
     task_dir = Path(os.getenv("det_models")) / get_task(task, name=True, models=True)
-    model_dir = task_dir / model
+    model_dir = task_dir / model / shape
     if not model_dir.is_dir():
         raise ValueError(f"{model_dir} does not exist")
     target_dir = model_dir / "consolidated"

@@ -48,6 +48,7 @@ def get_latest_model(base_dir: Pathlike, fold: int = 0) -> Optional[Path]:
             will return None
     """
     base_dir = Path(base_dir)
+
     m = [m for m in base_dir.iterdir() if m.is_dir()]
     m = [_m for _m in m if f"fold{fold}" in _m.stem]
     if m:

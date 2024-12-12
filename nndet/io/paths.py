@@ -229,7 +229,7 @@ def get_task(task_id: str, name: bool = False, models: bool = False) -> Union[Pa
     return result
 
 
-def get_training_dir(model_dir: Pathlike, fold: int) -> Path:
+def get_training_dir(model_dir: Pathlike, fold: int, shape:str) -> Path:
     """
     Find training dir from a specific model dir
 
@@ -240,7 +240,9 @@ def get_training_dir(model_dir: Pathlike, fold: int) -> Path:
     Returns:
         Path: path to training dir
     """
-    model_dir = Path(model_dir)
+    # model_dir = Path(model_dir) + shape
+    # combine model_dir and shape
+    model_dir = Path(model_dir) /  shape
     identifier = f"fold{fold}" if fold != -1 else "consolidated"
     candidates = [p for p in model_dir.iterdir() if p.is_dir() and identifier in p.stem]
     if len(candidates) == 1:

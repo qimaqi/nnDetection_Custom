@@ -299,10 +299,11 @@ class VideoMAEEncoder(AbstractEncoder):
             img_size=encoder_cfg["img_size"], 
             patch_size=encoder_cfg["patch_size"],
             num_frames=encoder_cfg["num_frames"],
-            map_to_decoder_type=encoder_cfg["map_to_decoder_type"],
             output_layers=encoder_cfg["output_layers"],
             feature_shapes=feature_shapes,
             t_patch_size=encoder_cfg["t_patch_size"],
+            upsample_func=encoder_cfg["upsample_func"],
+            upsample_stage=encoder_cfg["upsample_stage"],
         )
 
         if encoder_cfg['pretrained_path'] is not None:

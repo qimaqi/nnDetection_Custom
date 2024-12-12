@@ -1,15 +1,14 @@
 #!/bin/bash
 #SBATCH --job-name=nndet_luna
-#SBATCH --output=sbatch_log/baseline_nndet_%j.out
+#SBATCH --output=sbatch_log/mae64_submit_1_%j.out
 #SBATCH --nodes=1
 #SBATCH --time=48:00:00
 #SBATCH --gres=gpu:1
-#SBATCH --account=staff
-#SBATCH --nodelist=octopus03
-#SBATCH --cpus-per-task=4
-#SBATCH --mem 64GB
 
-##SBATCH --account=staff 
+#SBATCH --nodelist=bmicgpu09
+#SBATCH --cpus-per-task=4
+#SBATCH --mem 160GB
+
 ##SBATCH --gres=gpu:1
 ##SBATCH --constraint='titan_xp'
 
@@ -41,7 +40,11 @@ export OMP_NUM_THREADS=1
 # nndet_unpack ${det_data}/Task018_LunaSWIN/preprocessed/D3V001_3d/imagesTr 6
 # nndet_unpack ${det_data}/Task016_Luna/preprocessed/D3V001_3d/imagesTr 6
 
-# nndet_train 017 -o exp.fold=1 train=swinunetr
-# nndet_prep 018
-# nndet_unpack ${det_data}/Task018_LunaSWIN/preprocessed/D3V001_3d/imagesTr 6
-nndet_train 018 -o exp.fold=0 train=v001 
+echo "Job ID: $SLURM_JOBID"
+echo "Time: $(date)"
+
+
+nndet_train 018 -o exp.fold=2 train=mae64 +augment_cfg.patch_size=[64,128,128] trainer_cfg.gradient_clip_val=0 trainer_cfg.amp_backend=None trainer_cfg.precision=32 trainer_cfg.amp_level=None --sweep
+
+
+# nndet_train 016 -o exp.fold=2 train=mae64 trainer_cfg.amp_backend=None trainer_cfg.precision=32 trainer_cfg.amp_level=None +augment_cfg.patch_size=[64,128,128] model_cfg.encoder_kwargs.output_layers="[5, 11, 17, 23]" 

@@ -1,13 +1,13 @@
 #!/bin/bash
 #SBATCH --job-name=nndet_luna
-#SBATCH --output=sbatch_log/mae_nndet_%j.out
+#SBATCH --output=sbatch_log/mae_16x224_s0_freeze_%j.out
 #SBATCH --nodes=1
 #SBATCH --time=48:00:00
 #SBATCH --gres=gpu:1
 
-#SBATCH --nodelist=bmicgpu07
+#SBATCH --nodelist=octopus02
 #SBATCH --cpus-per-task=4
-#SBATCH --mem 96GB
+#SBATCH --mem 120GB
 
 ##SBATCH --account=staff 
 ##SBATCH --gres=gpu:1
@@ -38,13 +38,20 @@ export OMP_NUM_THREADS=1
 # export CXX=/scratch_net/schusch/qimaqi/install_gcc/bin/g++-11.3.0
 
 # nndet_example
-# nndet_prep 016 
+# nndet_prep 016 -o +model_cfg.patch_size=[16,224,224] prep=plan
 # nndet_unpack ${det_data}/Task000D3_Example/preprocessed/D3V001_3d/imagesTr 6
 # nndet_unpack ${det_data}/Task016_Luna/preprocessed/D3V001_3d/imagesTr 6
 
 # nndet_train 017 -o exp.fold=1 train=mae
 
-nndet_train 017 -o exp.fold=3 train=mae
+nndet_train 017 -o exp.fold=0 train=mae trainer_cfg.gradient_clip_val=0 trainer_cfg.amp_backend=None trainer_cfg.precision=32 trainer_cfg.amp_level=None trainer_cfg.freeze_encoder=True  +augment_cfg.patch_size=[16,224,224] 
+
+
+# nndet_train 016 -o exp.fold=0 train=mae +augment_cfg.patch_size=[16,224,224] 
+
+
+
+
 # 1,295.094 Total estimated model params size (MB)
 # nndet_train 017 -o exp.fold=0 train=mae train.mode=resume
 

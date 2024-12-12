@@ -16,6 +16,7 @@ from nndet.core.boxes.ops_np import box_center_np
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('model', type=str, help="Name of model")
+    parser.add_argument('--shape', type=str, default="16_224_224", help="Shape of the input image")
     args = parser.parse_args()
     model = args.model
 
@@ -25,8 +26,8 @@ if __name__ == '__main__':
 
     raw_splitted_images = Path(os.getenv("det_data")) / "Task016_Luna" / "raw_splitted" / "imagesTr"
 
-    # prediction_dir = model_dir / "consolidated" / "val_predictions"
-    prediction_dir = model_dir / "fold0" / "val_predictions"
+    prediction_dir = model_dir / args.shape  /"consolidated" / "val_predictions"
+    # prediction_dir = model_dir / "fold0" / "val_predictions"
     assert prediction_dir.is_dir()
 
     logger.remove()
@@ -59,4 +60,4 @@ if __name__ == '__main__':
             prediction_cache["probability"].append(float(prob))
 
     df = pd.DataFrame(prediction_cache)
-    df.to_csv(model_dir / f"{model}.csv")
+    df.to_csv(model_dir / args.shape / f"{model}.csv")

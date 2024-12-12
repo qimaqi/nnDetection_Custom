@@ -3,6 +3,7 @@ import numpy as np
 import json
 
 file = '/usr/bmicnas01/data-biwi-01/ct_video_mae_bmicscratch/data/nnDet_raw/Task018_Luna64x128/preprocessed/D3V001_3d.pkl'
+# '/usr/bmicnas01/data-biwi-01/ct_video_mae_bmicscratch/data/nnDet_raw/Task018_Luna64x128/preprocessed/D3V001_3d.pkl'
 #'/usr/bmicnas01/data-biwi-01/ct_video_mae_bmicscratch/data/nnDet_raw/Task018_Luna64x128/preprocessed/D3V001_3d/imagesTr/1_3_6_1_4_1_14519_5_2_1_6279_6001_219909753224298157409438012179_boxes.pkl'
 # '/usr/bmicnas01/data-biwi-01/ct_video_mae_bmicscratch/data/nnDet_raw/Task018_Luna64x128/preprocessed/D3V001_3d/imagesTr/1_3_6_1_4_1_14519_5_2_1_6279_6001_944888107209008719031293531091.pkl'
 # '/usr/bmicnas01/data-biwi-01/ct_video_mae_bmicscratch/data/nnDet_raw/Task016_Luna64x192/preprocessed/D3V001_3d.pkl'
@@ -20,9 +21,9 @@ for key, value in data.items():
     
 data['patch_size']= [64,128,128]
 
-save_pkl = '/usr/bmicnas01/data-biwi-01/ct_video_mae_bmicscratch/data/nnDet_raw/Task018_Luna64x128/preprocessed/D3V001_3d.pkl'
-with open(save_pkl, 'wb') as f:
-    pickle.dump(data, f)
+# save_pkl = '/usr/bmicnas01/data-biwi-01/ct_video_mae_bmicscratch/data/nnDet_raw/Task018_Luna64x128/preprocessed/D3V001_3d.pkl'
+# with open(save_pkl, 'wb') as f:
+#     pickle.dump(data, f)
 
 
 # map pkl to json, save json, include numpy arrays, int64, float64 in json

@@ -1,6 +1,6 @@
 #!/bin/bash
 #SBATCH --job-name=nndet_luna
-#SBATCH --output=sbatch_log/swinunter64x128_eval_%j.out
+#SBATCH --output=sbatch_log/swinunter64x128_s0_eval_%j.out
 #SBATCH --nodes=1
 #SBATCH --time=48:00:00
 #SBATCH --gres=gpu:1
@@ -39,8 +39,7 @@ export OMP_NUM_THREADS=1
 # nndet_example
 # nndet_prep 018 -o exp.fold=0 train=v001 overwrite=True model_cfg.encoder_kwargs={'plan_size':[64,128,128]}
 
-# nndet_unpack ${det_data}/Task018_Luna64x128/preprocessed/D3V001_3d/imagesTr 6 --to_int
+echo "Job ID: $SLURM_JOBID"
+echo "Time: $(date)"
 
-# nndet_train 018 -o exp.fold=0 train=swinunetr train.mode=resume +augment_cfg.patch_size=[64,128,128] trainer_cfg.gradient_clip_val=0 trainer_cfg.amp_backend=None trainer_cfg.precision=32 trainer_cfg.amp_level=None 
-
-nndet_eval 018 VideoMAEUNetV001_D3V001_3d 0 --boxes --analyze_boxes --shape=64_128_128
+nndet_train 018 -o exp.fold=0 train=swinunetr train.mode=resume +augment_cfg.patch_size=[64,128,128] trainer_cfg.gradient_clip_val=0 trainer_cfg.amp_backend=None trainer_cfg.precision=32 trainer_cfg.amp_level=None --sweep

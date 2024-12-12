@@ -47,6 +47,7 @@ trainer_cfg:
 
   initial_lr: 1.e-4 # initial learning rate to start with
   seperate_lr: False
+  freeze_encoder: False
   sgd_momentum: 0.9 # momentum term
   sgd_nesterov: True # nesterov momentum
   weight_decay: 1.e-6 # weight decay for optimizer
@@ -54,7 +55,7 @@ trainer_cfg:
   warm_iterations: 4000 # number of iterations with warmup
   warm_lr: 1.e-6 # learning rate to start warmup from
 
-  poly_gamma: 0.9
+  poly_gamma: 0.5
 
   swa_epochs: 10 # number of epochs to run swa with cyclic learning rate
   # sweep_ckpt: Select checkpoint identifier for sweeping. Default "last".
@@ -73,7 +74,8 @@ model_cfg:
     t_patch_size: 2 
     no_qkv_bias: False 
     sep_pos_embed: True
-    map_to_decoder_type: "conv"
+    upsample_func: "transpose" # transpose, interpolate
+    upsample_stage: "direct" #  gradually, direct
     output_layers: [5, 11, 17, 23] # [0, 5, 11, 17, 23] for 16x224x224, [0, 5, 10, 15, 20, 23] for 64x128x128
     pretrained_path: /scratch_net/schusch/qimaqi/cbct_proj/CBCT/Video_MAE_Seg/checkpoints/mae_pretrain_vit_large_k700.pth
 

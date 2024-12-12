@@ -47,7 +47,8 @@ trainer_cfg:
 
   initial_lr: 1.e-4 # initial learning rate to start with
   seperate_lr: True
-  sgd_momentum: 0.9 # momentum term
+  freeze_encoder: False
+  sgd_momentum: 0.5 # momentum term
   sgd_nesterov: True # nesterov momentum
   weight_decay: 1.e-6 # weight decay for optimizer
 
@@ -73,7 +74,8 @@ model_cfg:
     t_patch_size: 8 
     no_qkv_bias: False 
     sep_pos_embed: True
-    map_to_decoder_type: "conv"
+    upsample_func: "transpose"
+    upsample_stage: "direct"
     output_layers: [5,10,15,19,23] # [0, 5, 11, 17, 23] for 16x224x224, [0, 5, 10, 15, 20, 23] for 64x128x128
     pretrained_path: /scratch_net/schusch/qimaqi/cbct_proj/CBCT/Video_MAE_Seg/checkpoints/mae_pretrain_vit_large_k700.pth
 

@@ -232,7 +232,14 @@ class Datamodule(BaseModule):
             seeds=None,
             pin_memory=True,
             )
+
+        # OrderedDict()
         logger.info("TRAINING KEYS:\n %s" % (str(self.dataset_tr.keys())))
+        logger.info(f"Length of training keys: {len(self.dataset_tr)}")
+        logger.info("VALIDATION KEYS:\n %s" % (str(self.dataset_val.keys())))
+        logger.info(f"Length of validation keys: {len(self.dataset_val)}")
+        # 799 and 89
+
         return tr_gen
 
     def val_dataloader(self):

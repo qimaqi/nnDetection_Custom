@@ -155,6 +155,10 @@ class SWACycleLinear(BaseSWA):
         self.num_iterations_per_epoch = num_iterations_per_epoch
 
     def get_swa_scheduler(self, optimizer) -> Union[_LRScheduler, dict]:
+        print("========================================")
+        print("SWACycleLinear loaded")
+        print("========================================")
+        
         return {
             "scheduler": CycleLinear(
                 optimizer=optimizer,

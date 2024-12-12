@@ -29,7 +29,7 @@ augment_cfg:
 trainer_cfg:
   gpus: 1 # number of gpus
   accelerator: # distributed backend
-  precision: 16 # mixed precision
+  precision: "bf16" # mixed precision
   amp_backend: native # mixed precision backend
   amp_level: O1 # when mixed precision backend is APEX use O1
   # Per default training is deterministic, non-deterministic allows
@@ -54,7 +54,7 @@ trainer_cfg:
   warm_iterations: 4000 # number of iterations with warmup
   warm_lr: 1.e-6 # learning rate to start warmup from
 
-  poly_gamma: 0.9
+  poly_gamma: 0.5
 
   swa_epochs: 10 # number of epochs to run swa with cyclic learning rate
   # sweep_ckpt: Select checkpoint identifier for sweeping. Default "last".

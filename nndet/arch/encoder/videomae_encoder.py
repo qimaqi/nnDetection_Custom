@@ -179,7 +179,8 @@ class VideoMAE_Encoder(nn.Module):
         trunc_init=False,
         cls_embed=False,
         use_lora=0, # 0 for not use lora
-        map_to_decoder_type='conv',
+        upsample_func='conv',
+        upsample_stage='direct',
         output_layers=[5,11,17,23],
     ):
         super().__init__()
@@ -195,7 +196,7 @@ class VideoMAE_Encoder(nn.Module):
         self.t_patch_size = t_patch_size
         self.patch_size = patch_size
         self.patch_info = None
-        self.map_to_decoder_type = map_to_decoder_type
+
         self.t_pred_patch_size = t_patch_size
         self.feature_shapes = feature_shapes
 
@@ -258,17 +259,20 @@ class VideoMAE_Encoder(nn.Module):
             ]
         )
 
-        if self.map_to_decoder_type == 'conv':
-            self.decoder0_upsampler = Decoder_Map(in_planes = in_chans, out_planes=feature_shapes[0][0], input_size=feature_shapes[0][1:], output_size=feature_shapes[0][1:])
+        # if self.map_to_decoder_type == 'conv':
+        self.decoder0_upsampler = Decoder_Map(in_planes = in_chans, out_planes=feature_shapes[0][0], input_size=feature_shapes[0][1:], output_size=feature_shapes[0][1:],
+                                                upsample_func=upsample_func, upsample_stage=upsample_stage)
 
-            assert len(self.intermediate_feat_layer) == len(feature_shapes) - 1, f"len(self.intermediate_feat_layer) {len(self.intermediate_feat_layer)} != len(feature_shapes) {len(feature_shapes)} - 1 "
-            for num_j, layer_j in  enumerate(self.intermediate_feat_layer):
-                print("set layer", layer_j, 'in plane', embed_dim, 'out plane', feature_shapes[num_j+1][0], 'input size', feature_shapes[num_j+1][1:], 'output size', feature_shapes[num_j+1][1:])
-                setattr(self, f"decoder{layer_j}_upsampler", Decoder_Map(in_planes = embed_dim, 
-                                                                         out_planes=feature_shapes[num_j+1][0], 
-                                                                         input_size=self.token_shape, 
-                                                                         output_size=feature_shapes[num_j+1][1:])) 
-            # raise ValueError("Not implemented yet")
+        assert len(self.intermediate_feat_layer) == len(feature_shapes) - 1, f"len(self.intermediate_feat_layer) {len(self.intermediate_feat_layer)} != len(feature_shapes) {len(feature_shapes)} - 1 "
+        for num_j, layer_j in  enumerate(self.intermediate_feat_layer):
+            print("set layer", layer_j, 'in plane', embed_dim, 'out plane', feature_shapes[num_j+1][0], 'input size', feature_shapes[num_j+1][1:], 'output size', feature_shapes[num_j+1][1:])
+            setattr(self, f"decoder{layer_j}_upsampler", Decoder_Map(in_planes = embed_dim, 
+                                                                        out_planes=feature_shapes[num_j+1][0], 
+                                                                        input_size=self.token_shape, 
+                                                                        output_size=feature_shapes[num_j+1][1:],
+                                                                        upsample_func=upsample_func, upsample_stage=upsample_stage),
+                                                                        ) 
+        # raise ValueError("Not implemented yet")
 
         # if self.map_to_decoder_type == 'conv':
         #     self.decoder24_upsampler = Decoder24_Upsampler(embed_dim, 320)

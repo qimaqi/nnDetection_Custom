@@ -28,7 +28,7 @@ from nndet.io.load import load_pickle
 from nndet.io.patching import save_get_crop
 from nndet.utils.info import maybe_verbose_iterable
 from nndet.core.boxes.ops_np import box_size_np
-
+import time 
 
 class FixedSlimDataLoaderBase(SlimDataLoaderBase):
     def __init__(self,
@@ -198,6 +198,7 @@ class DataLoader3DFast(FixedSlimDataLoaderBase):
                 `properties`(List[Dict]): properties of each case
                 `keys` (List[str]): case ids
         """
+        t0 = time.time()
         data_batch = np.zeros(self.data_shape_batch, dtype=float)
         seg_batch = np.zeros(self.seg_shape_batch, dtype=float)
         instances_batch, properties_batch, case_ids_batch = [], [], []
@@ -205,9 +206,14 @@ class DataLoader3DFast(FixedSlimDataLoaderBase):
         selected_cases, selected_instances = self.select()
         for batch_idx, (case_id, instance_id) in enumerate(zip(selected_cases, selected_instances)):
             # print(case_id, instance_id)
+
+            t1 = time.time()
             case_data = np.load(self._data[case_id]['data_file'], self.memmap_mode, allow_pickle=True)
+            t2 = time.time()
             case_seg = np.load(self._data[case_id]['seg_file'], self.memmap_mode, allow_pickle=True)
+            t3 = time.time()
             properties = load_pickle(self._data[case_id]['properties_file'])
+            t4 = time.time()
 
             if instance_id < 0:
                 candidates = self.load_candidates(case_id=case_id, fg_crop=False)
@@ -218,6 +224,7 @@ class DataLoader3DFast(FixedSlimDataLoaderBase):
                     case_id=case_id,
                     candidates=candidates,
                 )
+                t5 = time.time()
             else:
                 candidates = self.load_candidates(case_id=case_id, fg_crop=True)
                 crop = self.get_fg_crop(
@@ -228,20 +235,40 @@ class DataLoader3DFast(FixedSlimDataLoaderBase):
                     instance_id=instance_id,
                     candidates=candidates,
                 )
+                t6 = time.time()
+            
+            t7 = time.time()
 
             data_batch[batch_idx] = save_get_crop(case_data,
                                                   crop=crop,
                                                   mode=self.pad_mode,
                                                   **self.pad_kwargs_data,
                                                   )[0]
+            t8 = time.time()
             seg_batch[batch_idx] = save_get_crop(case_seg,
                                                  crop=crop,
                                                  mode='constant',
                                                  constant_values=-1,
                                                  )[0]
+            t9 = time.time()
             case_ids_batch.append(case_id)
             instances_batch.append(properties.pop("instances"))
             properties_batch.append(properties)
+
+        # print("load data time", t2-t1)
+        # print("load seg time", t3-t2)
+        # print("load properties time", t4-t3)
+        # print("get bg crop time or fg time", t7 - t4)
+        # print("save data get crop time", t8-t7)
+        # print("save seg get crop time", t9-t8)
+        
+
+        # print("generate batch time", time.time()-t0)
+        # print("data_batch", data_batch.shape, data_batch.dtype, data_batch.min(), data_batch.max())
+
+        if data_batch.max() >= 200:
+            data_batch = data_batch / 255.0
+            # print("data_batch", data_batch.shape, data_batch.dtype, data_batch.min(), data_batch.max())
 
         return {'data': data_batch,
                 'seg': seg_batch,
@@ -263,7 +290,10 @@ class DataLoader3DFast(FixedSlimDataLoaderBase):
             Union[Dict, None]: dict if fg, None if bg
         """
         if fg_crop:
-            return load_pickle(self._data[case_id]['boxes_file'])
+            # t0 = time.time()
+            candidate = load_pickle(self._data[case_id]['boxes_file'])
+            # print("load candidate time", time.time()-t0)
+            return candidate
         else:
             return None
 

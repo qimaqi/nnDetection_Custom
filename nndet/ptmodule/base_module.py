@@ -34,6 +34,7 @@ class LightningBaseModule(pl.LightningModule):
                  model_cfg: dict,
                  trainer_cfg: dict,
                  plan: dict,
+                 augment_cfg: dict = None,
                  **kwargs
                  ):
         """
@@ -62,9 +63,19 @@ class LightningBaseModule(pl.LightningModule):
             plan_anchors=self.plan["anchors"],
         )
 
+        # TODO modify with argument shape
+        # this shape is decided by the plan, so follow the nndet
+        input_patch_size = plan["patch_size"]
+        if augment_cfg is not None:
+            if 'patch_size' in augment_cfg:
+                if augment_cfg['patch_size'] is not None:
+                    input_patch_size = (augment_cfg['patch_size'])
+
         self.example_input_array_shape = (
-            1, plan["architecture"]["in_channels"], *plan["patch_size"],
+            1, plan["architecture"]["in_channels"], *input_patch_size,
             )
+        print("====================================")
+        print("example_input_array_shape", self.example_input_array_shape)
 
         self.epoch_start_tic = 0
         self.epoch_end_toc = 0

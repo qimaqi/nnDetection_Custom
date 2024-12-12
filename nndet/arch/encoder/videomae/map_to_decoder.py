@@ -20,12 +20,14 @@ import numpy as np
 
 
 class Decoder_Map(nn.Module):
-    def __init__(self, in_planes, out_planes, input_size, output_size):
+    def __init__(self, in_planes, out_planes, input_size, output_size, upsample_func='transpose', upsample_stage='direct'):
         super().__init__()
         # input_size [D, H, W]
         # output_size [D', H', W']
         input_size = np.array(input_size)
         output_size = np.array(output_size)
+        assert upsample_func in ['transpose', 'interpolate']
+        assert upsample_stage in ['gradually', 'direct']
 
         # we need to decide a plan for map to decoder target size
         
@@ -50,33 +52,46 @@ class Decoder_Map(nn.Module):
 
         if np.any(self.pool_size != output_size):
             target_upsample_ratios = output_size // self.pool_size
-            # first decide how many layers we need to upsample
-            max_upsample_ratio = max(target_upsample_ratios)
-            stages = (np.log2(max_upsample_ratio)).astype(int)
-            upsample_stop_stages = (np.log2(target_upsample_ratios)).astype(int)
-            print("### upsample_stop_stages ### ", upsample_stop_stages)
-            self.blocks = []
-            if stages == 1:
-                features = [in_planes, out_planes]
-            elif stages == 2:
-                features = [in_planes, 512, out_planes]
-            elif stages == 3:
-                features = [in_planes, 512, 256, out_planes]
-            elif stages >= 4:
-                raise NotImplementedError("Too many stages")
+            if upsample_stage == 'gradually':
+                # first decide how many layers we need to upsample
+                max_upsample_ratio = max(target_upsample_ratios)
+                stages = (np.log2(max_upsample_ratio)).astype(int)
+                upsample_stop_stages = (np.log2(target_upsample_ratios)).astype(int)
+                print("### upsample_stop_stages ### ", upsample_stop_stages)
+                self.blocks = []
+                if stages == 1:
+                    features = [in_planes, out_planes]
+                elif stages == 2:
+                    features = [in_planes, 512, out_planes]
+                elif stages == 3:
+                    features = [in_planes, 512, 256, out_planes]
+                elif stages >= 4:
+                    raise NotImplementedError("Too many stages")
 
 
-            for i in range(stages):
-                # check first dimension
-                upsample_kernels = [2, 2, 2]
-                strides = [2, 2, 2]
-                for j in range(3):
-                    if i >= upsample_stop_stages[j]:
-                        upsample_kernels[j] = 1
-                        strides[j] = 1
-
-                print("i", i, "upsample_kernels", upsample_kernels, "strides", strides, "features", features[i], features[i+1])
-                self.blocks.append(nn.ConvTranspose3d(features[i], features[i+1], kernel_size=upsample_kernels, stride=strides, padding=0, output_padding=0))
+                for i in range(stages):
+                    # check first dimension
+                    upsample_kernels = [2, 2, 2]
+                    strides = [2, 2, 2]
+                    for j in range(3):
+                        if i >= upsample_stop_stages[j]:
+                            upsample_kernels[j] = 1
+                            strides[j] = 1
+                    if upsample_func == 'interpolate':
+                        self.blocks.append(nn.Upsample(scale_factor=upsample_kernels, mode='trilinear', align_corners=False))
+                    elif upsample_func == 'transpose':
+                        print("i", i, "upsample_kernels", upsample_kernels, "strides", strides, "features", features[i], features[i+1])
+                        self.blocks.append(nn.ConvTranspose3d(features[i], features[i+1], kernel_size=upsample_kernels, stride=strides, padding=0, output_padding=0))
+            elif upsample_stage == 'direct':
+                if upsample_func == 'interpolate':
+                    upsample_kernels = target_upsample_ratios
+                    upsample_kernels = [float(k) for k in upsample_kernels]
+                    upsample_kernels = tuple(upsample_kernels)
+                    self.blocks = [nn.Upsample(scale_factor=upsample_kernels, mode='trilinear', align_corners=False)]
+                    self.blocks.append(Conv3DBlock(in_planes, out_planes))
+                elif upsample_func == 'transpose':
+                    upsample_kernels = target_upsample_ratios
+                    self.blocks = [nn.ConvTranspose3d(in_planes, out_planes, kernel_size=upsample_kernels, stride=upsample_kernels, padding=0, output_padding=0)]
 
             # if rescale_ratio[1] == 1/2:
             #     self.blocks.append(nn.ConvTranspose3d(in_planes, out_planes, kernel_size=(1,2,2), stride=(1,2,2), padding=0, output_padding=0))

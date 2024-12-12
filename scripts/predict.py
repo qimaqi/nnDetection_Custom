@@ -142,6 +142,7 @@ def main():
     parser.add_argument('-f', '--fold', type=int, required=False, default=-1,
                         help="fold to use for prediction. -1 uses the consolidated model",
                         )
+    parser.add_argument('--shape', type=str, default="16_224_224")
     parser.add_argument('-nmodels', '--num_models', type=int, default=None,
                         required=False,
                         help="number of models for ensemble(per default all models will be used)."
@@ -183,6 +184,7 @@ def main():
 
     args = parser.parse_args()
     model = args.model
+    shape = args.shape
     fold = args.fold
     task = args.task
     num_models = args.num_models
@@ -195,7 +197,7 @@ def main():
 
     task_name = get_task(task, name=True)
     task_model_dir = Path(os.getenv("det_models"))
-    training_dir = get_training_dir(task_model_dir / task_name / model, fold)
+    training_dir = get_training_dir(task_model_dir / task_name / model, fold, shape)
 
     process = args.no_preprocess
     if test_split and process:

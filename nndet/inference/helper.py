@@ -62,7 +62,7 @@ def predict_dir(
             `false` only the final result is saved.
         kwargs: passed to :method:'get_predictor' method of module
     """
-    logger.info("Running inference")
+    logger.info(f"Running inference on {source_dir}. Save to {target_dir}.")
 
     source_dir = Path(source_dir)
     target_dir = Path(target_dir)
@@ -92,6 +92,25 @@ def predict_dir(
         properties = load_pickle(path.parent / f"{case_id}.pkl")
         properties["transpose_backward"] = plan["transpose_backward"]
 
+        # print("case min max", case.min(), case.max())
+        # map to 0 - 255 and back to 0 - 1
+        # print("source_dir.name", str(source_dir), 'Luna' in str(source_dir))
+        if 'Luna' in str(source_dir) and 'crop' not in str(source_dir):
+            min_val = -2.1
+            max_val = 4.7
+            assert case.min() >= min_val, f"min value {a['data'].min()} is smaller than {min_val}"
+            assert case.max() <= max_val, f"max value {a['data'].max()} is larger than {max_val}"
+            
+            case = (((case- min_val) / (max_val - min_val)))
+            print("case min max", case.min(), case.max())
+
+        elif 'Luna' in str(source_dir) and 'crop' in str(source_dir):
+            raise NotImplementedError
+
+        else:
+            raise NotImplementedError
+
+        
         if save_state:
             _ = predictor.predict_case({"data": case},
                                        properties,

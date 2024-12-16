@@ -1,0 +1,44 @@
+Job ID: 862320
+Time: Fri Dec 13 14:17:46 CET 2024
+Traceback (most recent call last):
+  File "/usr/bmicnas02/data-biwi-01/lung_detection/miniconda3/envs/nndet_venv/bin/nndet_prep", line 33, in <module>
+    sys.exit(load_entry_point('nndet', 'console_scripts', 'nndet_prep')())
+  File "/usr/bmicnas02/data-biwi-01/lung_detection/miniconda3/envs/nndet_venv/bin/nndet_prep", line 25, in importlib_load_entry_point
+    return next(matches).load()
+  File "/usr/bmicnas02/data-biwi-01/lung_detection/miniconda3/envs/nndet_venv/lib/python3.8/importlib/metadata.py", line 77, in load
+    module = import_module(match.group('module'))
+  File "/usr/bmicnas02/data-biwi-01/lung_detection/miniconda3/envs/nndet_venv/lib/python3.8/importlib/__init__.py", line 127, in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+  File "<frozen importlib._bootstrap>", line 1014, in _gcd_import
+  File "<frozen importlib._bootstrap>", line 991, in _find_and_load
+  File "<frozen importlib._bootstrap>", line 975, in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 671, in _load_unlocked
+  File "<frozen importlib._bootstrap_external>", line 843, in exec_module
+  File "<frozen importlib._bootstrap>", line 219, in _call_with_frames_removed
+  File "/usr/bmicnas02/data-biwi-01/lung_detection/nnDetection_Custom/scripts/preprocess.py", line 36, in <module>
+    from nndet.planning import DatasetAnalyzer
+  File "/usr/bmicnas02/data-biwi-01/lung_detection/nnDetection_Custom/nndet/planning/__init__.py", line 2, in <module>
+    from nndet.planning.experiment import PLANNER_REGISTRY
+  File "/usr/bmicnas02/data-biwi-01/lung_detection/nnDetection_Custom/nndet/planning/experiment/__init__.py", line 6, in <module>
+    from nndet.planning.experiment.v001 import D3V001
+  File "/usr/bmicnas02/data-biwi-01/lung_detection/nnDetection_Custom/nndet/planning/experiment/v001.py", line 6, in <module>
+    from nndet.ptmodule import MODULE_REGISTRY
+  File "/usr/bmicnas02/data-biwi-01/lung_detection/nnDetection_Custom/nndet/ptmodule/__init__.py", line 7, in <module>
+    from nndet.ptmodule.retinaunet import * 
+  File "/usr/bmicnas02/data-biwi-01/lung_detection/nnDetection_Custom/nndet/ptmodule/retinaunet/__init__.py", line 1, in <module>
+    from nndet.ptmodule.retinaunet.base import RetinaUNetModule, VideoMAEUNetModule, SwinUnetrUNetModule
+  File "/usr/bmicnas02/data-biwi-01/lung_detection/nnDetection_Custom/nndet/ptmodule/retinaunet/base.py", line 35, in <module>
+    from nndet.core.retina import BaseRetinaNet
+  File "/usr/bmicnas02/data-biwi-01/lung_detection/nnDetection_Custom/nndet/core/retina.py", line 18, in <module>
+    from nndet.arch.encoder.abstract import EncoderType
+  File "/usr/bmicnas02/data-biwi-01/lung_detection/nnDetection_Custom/nndet/arch/encoder/__init__.py", line 2, in <module>
+    from nndet.arch.encoder.modular import Encoder
+  File "/usr/bmicnas02/data-biwi-01/lung_detection/nnDetection_Custom/nndet/arch/encoder/modular.py", line 23, in <module>
+    from nndet.arch.encoder.videomae_encoder import VideoMAE_Encoder, load_pretrained_weights_encoder
+  File "/usr/bmicnas02/data-biwi-01/lung_detection/nnDetection_Custom/nndet/arch/encoder/videomae_encoder.py", line 18, in <module>
+    from .videomae import video_vit
+  File "/usr/bmicnas02/data-biwi-01/lung_detection/nnDetection_Custom/nndet/arch/encoder/videomae/__init__.py", line 1, in <module>
+    from .video_vit import LayerNorm3d, Mlp, PatchEmbed, Attention, Block
+  File "/usr/bmicnas02/data-biwi-01/lung_detection/nnDetection_Custom/nndet/arch/encoder/videomae/video_vit.py", line 6, in <module>
+    from timm.models.layers import to_2tuple
+ModuleNotFoundError: No module named 'timm'

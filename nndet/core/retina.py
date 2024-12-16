@@ -216,6 +216,7 @@ class BaseRetinaNet(AbstractModel):
                 Typically includes:
                     `seg_logits`: segmentation logits
         """
+        print("inp", inp.shape, inp.min(), inp.max())
         features_maps_all = self.decoder(self.encoder(inp))
         feature_maps_head = [features_maps_all[i] for i in self.decoder_levels]
 

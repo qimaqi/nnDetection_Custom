@@ -1,0 +1,40 @@
+Job ID: 862721
+Time: Sun Dec 15 13:36:06 CET 2024
+/usr/bmicnas02/data-biwi-01/lung_detection/miniconda3/envs/nndet_venv/lib/python3.8/site-packages/timm/models/layers/__init__.py:48: FutureWarning: Importing from timm.models.layers is deprecated, please import via timm.layers
+  warnings.warn(f"Importing from {__name__} is deprecated, please import via timm.layers", FutureWarning)
+/usr/bmicnas02/data-biwi-01/lung_detection/miniconda3/envs/nndet_venv/lib/python3.8/site-packages/monai/utils/tf32.py:66: UserWarning: torch.backends.cuda.matmul.allow_tf32 = True by default.
+  This value defaults to True when PyTorch version in [1.7, 1.11] and may affect precision.
+  See https://docs.monai.io/en/latest/precision_accelerating.html#precision-and-accelerating
+  warnings.warn(
+/usr/bmicnas02/data-biwi-01/lung_detection/nnDetection_Custom/nndet/utils/check.py:52: UserWarning: Warning: 'det_num_threads' environment variable not set. Please read installation instructions again. Training will not work properly.
+  warnings.warn(
+2024-12-15 13:36:43.689 | INFO     | scripts.train:init_train_dir:172 - Output dir: /usr/bmicnas02/data-biwi-01/lung_detection/nnDet_models/Task017_Luna_crop/RetinaUNetV001_D3V001_3d/16_224_224/fold0
+Experiment with name Task017_Luna_crop not found. Creating it.
+====================================
+RetinaUNetModule
+encoder_cls:  <class 'nndet.arch.encoder.modular.Encoder'>
+decoder_cls:  <class 'nndet.arch.decoder.base.UFPNModular'>
+====================================
+VideoMAEUNetModule
+====================================
+SwinUnetrUNetModule
+'det_verbose' environment variable not set. Continue in verbose mode.
+Overwrites: ['exp.fold=0', 'train=v001', '+augment_cfg.patch_size=[16,224,224]']
+[1mINFO Log file at /usr/bmicnas02/data-biwi-01/lung_detection/nnDet_models/Task017_Luna_crop/RetinaUNetV001_D3V001_3d/16_224_224/fold0/train.log[0m
+[1mINFO Using splits /usr/bmicnas02/data-biwi-01/lung_detection/nnDet_data/Task017_Luna_crop/preprocessed/splits_final.pkl with fold 0[0m
+Traceback (most recent call last):
+  File "/usr/bmicnas02/data-biwi-01/lung_detection/miniconda3/envs/nndet_venv/bin/nndet_train", line 33, in <module>
+    sys.exit(load_entry_point('nndet', 'console_scripts', 'nndet_train')())
+  File "/usr/bmicnas02/data-biwi-01/lung_detection/nnDetection_Custom/nndet/utils/check.py", line 62, in wrapper
+    return func(*args, **kwargs)
+  File "/usr/bmicnas02/data-biwi-01/lung_detection/nnDetection_Custom/scripts/train.py", line 70, in train
+    _train(
+  File "/usr/bmicnas02/data-biwi-01/lung_detection/nnDetection_Custom/scripts/train.py", line 242, in _train
+    datamodule = Datamodule(
+  File "/usr/bmicnas02/data-biwi-01/lung_detection/nnDetection_Custom/nndet/io/datamodule/bg_module.py", line 101, in __init__
+    super().__init__(
+  File "/usr/bmicnas02/data-biwi-01/lung_detection/nnDetection_Custom/nndet/io/datamodule/base.py", line 71, in __init__
+    self.do_split()
+  File "/usr/bmicnas02/data-biwi-01/lung_detection/nnDetection_Custom/nndet/io/datamodule/base.py", line 109, in do_split
+    self.dataset_tr[i] = self.dataset[i]
+KeyError: '1_3_6_1_4_1_14519_5_2_1_6279_6001_212608679077007918190529579976'

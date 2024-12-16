@@ -266,8 +266,8 @@ class DataLoader3DFast(FixedSlimDataLoaderBase):
         # print("generate batch time", time.time()-t0)
         # print("data_batch", data_batch.shape, data_batch.dtype, data_batch.min(), data_batch.max())
 
-        if data_batch.max() >= 200:
-            data_batch = data_batch / 255.0
+        # if data_batch.max() >= 200:
+        #     data_batch = data_batch / 255.0
             # print("data_batch", data_batch.shape, data_batch.dtype, data_batch.min(), data_batch.max())
 
         return {'data': data_batch,

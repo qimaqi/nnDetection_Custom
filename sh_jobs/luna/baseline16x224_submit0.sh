@@ -52,12 +52,17 @@ echo "Time: $(date)"
 # nndet_sweep 016 RetinaUNetV001_D3V001_3d 0
 
 # nndet_train 016 -o exp.fold=0 train=v001 +augment_cfg.patch_size=[16,224,224] --sweep
-nndet_train 016 -o exp.fold=0 train=v001 train.mode=resume +augment_cfg.patch_size=[16,224,224] --sweep
-nndet_train 016 -o exp.fold=1 train=v001 train.mode=resume +augment_cfg.patch_size=[16,224,224] --sweep
+# nndet_train 016 -o exp.fold=0 train=v001 train.mode=resume +augment_cfg.patch_size=[16,224,224] --sweep
+# nndet_train 016 -o exp.fold=1 train=v001 train.mode=resume +augment_cfg.patch_size=[16,224,224] --sweep
 
 # train.mode=resume 
 
 # nndet_eval 016 RetinaUNetV001_D3V001_3d 0 --boxes --analyze_boxes --shape=16_224_224
+# nndet_eval 016 RetinaUNetV001_D3V001_3d 5 --boxes --analyze_boxes --shape=16_224_224
+# nndet_eval 016 RetinaUNetV001_D3V001_3d 6 --boxes --analyze_boxes --shape=16_224_224
+# nndet_eval 016 RetinaUNetV001_D3V001_3d 7 --boxes --analyze_boxes --shape=16_224_224
+# nndet_eval 016 RetinaUNetV001_D3V001_3d 8 --boxes --analyze_boxes --shape=16_224_224
+# nndet_eval 016 RetinaUNetV001_D3V001_3d 9 --boxes --analyze_boxes --shape=16_224_224
 
 
 

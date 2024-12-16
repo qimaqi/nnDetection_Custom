@@ -16,7 +16,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import numpy as np 
-
+from .video_vit import LayerNorm3d
 
 
 class Decoder_Map(nn.Module):
@@ -29,29 +29,36 @@ class Decoder_Map(nn.Module):
         assert upsample_func in ['transpose', 'interpolate']
         assert upsample_stage in ['gradually', 'direct']
 
+        # example usage:
+        # for 16x224x224, 
+        # target feature: decoder_levels(1,2,3,4)
+        # mae feature: [4, 1024, 8, 14, 14]
+        # ([4, 32, 16, 224, 224])  <- try to parse None since it might not used
+        # ([4, 64, 8, 112, 112]) <-14*2*2*2, x no change
+        # ([4, 128, 4, 56, 56]) <- 14*2*2, pool x in the end
+        # torch.Size([4, 256, 4, 28, 28]) <- 14*2, pool x in the end
+        # torch.Size([4, 320, 4, 14, 14]) < just pool x
+
+        # for 64x128x128 decoder_levels(2,3,4,5)
+        # ([4, 32, 64, 128, 128])
+        # ([4, 64, 32, 64, 64])
+        # ([4, 128, 16, 32, 32])
+        # ([4, 256, 8, 16, 16])
+        # ([4, 320, 4, 8, 8])
+        # ([4, 320, 4, 4, 4]) 
+
         # we need to decide a plan for map to decoder target size
-        
         assert (input_size % 2 == 0).all() and (output_size % 2 == 0).all()
         assert len(input_size) == len(output_size)
-        rescale_ratio = input_size / output_size
-        
-        if np.any(rescale_ratio > 1):
-            pooling_kernel = (int(rescale_ratio[0]), int(max(1, rescale_ratio[1])), int(max(1, rescale_ratio[2]))) # TODO assume only the first layer might be smaller
-            stride = pooling_kernel
-            self.pool = nn.MaxPool3d(kernel_size=pooling_kernel, stride=stride)
-            self.pool_size = [input_size[0] // pooling_kernel[0], input_size[1] // pooling_kernel[1], input_size[2] // pooling_kernel[2]]
-        else:
-            self.pool = nn.Identity()
-            self.pool_size = input_size
-
-        print("rescale_ratio", rescale_ratio)
-        print("self.pool_size", self.pool_size)
-        print("output_size", output_size)
-        print("output plane", out_planes)
+        # rescale_ratio = input_size / output_size
 
 
-        if np.any(self.pool_size != output_size):
-            target_upsample_ratios = output_size // self.pool_size
+        upsample_feature = input_size
+        upsample_ratio = output_size // input_size
+        if np.any(upsample_ratio > 1):
+            target_upsample_ratios = output_size // input_size
+            # replace target_upsample_ratios minumum value to 1
+            target_upsample_ratios = np.maximum(target_upsample_ratios, 1)
             if upsample_stage == 'gradually':
                 # first decide how many layers we need to upsample
                 max_upsample_ratio = max(target_upsample_ratios)
@@ -60,12 +67,18 @@ class Decoder_Map(nn.Module):
                 print("### upsample_stop_stages ### ", upsample_stop_stages)
                 self.blocks = []
                 if stages == 1:
-                    features = [in_planes, out_planes]
+                    features = [in_planes, in_planes // 2]
+                    out_dim = in_planes // 2
                 elif stages == 2:
-                    features = [in_planes, 512, out_planes]
+                    features = [in_planes, in_planes // 2 , in_planes // 4]
+                    out_dim = in_planes // 4
                 elif stages == 3:
-                    features = [in_planes, 512, 256, out_planes]
-                elif stages >= 4:
+                    features = [in_planes, in_planes // 2,  in_planes // 4 , in_planes // 8]
+                    out_dim = in_planes // 8
+                elif stages == 4:
+                    features = [in_planes, in_planes // 2,  in_planes // 4 ,  in_planes // 8 , in_planes // 16]
+                    out_dim = in_planes // 16
+                elif stages >= 5:
                     raise NotImplementedError("Too many stages")
 
 
@@ -79,19 +92,63 @@ class Decoder_Map(nn.Module):
                             strides[j] = 1
                     if upsample_func == 'interpolate':
                         self.blocks.append(nn.Upsample(scale_factor=upsample_kernels, mode='trilinear', align_corners=False))
+                        upsample_feature = upsample_feature * upsample_kernels
+
                     elif upsample_func == 'transpose':
                         print("i", i, "upsample_kernels", upsample_kernels, "strides", strides, "features", features[i], features[i+1])
                         self.blocks.append(nn.ConvTranspose3d(features[i], features[i+1], kernel_size=upsample_kernels, stride=strides, padding=0, output_padding=0))
+                        if i < stages - 1:
+                            self.blocks.append(LayerNorm3d(features[i+1]))
+                            self.blocks.append(nn.GELU())
+                        upsample_feature = upsample_feature * upsample_kernels
+
             elif upsample_stage == 'direct':
+                
                 if upsample_func == 'interpolate':
+                    out_dim = in_planes
                     upsample_kernels = target_upsample_ratios
                     upsample_kernels = [float(k) for k in upsample_kernels]
                     upsample_kernels = tuple(upsample_kernels)
                     self.blocks = [nn.Upsample(scale_factor=upsample_kernels, mode='trilinear', align_corners=False)]
-                    self.blocks.append(Conv3DBlock(in_planes, out_planes))
+                    upsample_feature = upsample_feature * np.array(upsample_kernels)
+
                 elif upsample_func == 'transpose':
+                    out_dim = out_planes
                     upsample_kernels = target_upsample_ratios
-                    self.blocks = [nn.ConvTranspose3d(in_planes, out_planes, kernel_size=upsample_kernels, stride=upsample_kernels, padding=0, output_padding=0)]
+                    self.blocks = [nn.ConvTranspose3d(in_planes, out_dim, kernel_size=upsample_kernels, stride=upsample_kernels, padding=0, output_padding=0)]
+                    upsample_feature = upsample_feature * np.array(upsample_kernels)
+                    self.blocks.append(LayerNorm3d(out_dim))
+                    self.blocks.append(nn.GELU())
+
+            self.blocks = nn.Sequential(*self.blocks)
+        else:
+            # do need to upsample
+            out_dim = in_planes # input size > output size, need only to do pooling, 
+            self.blocks = [torch.nn.Identity()]
+            # self.blocks = [Conv3DBlock(in_planes, out_planes)]
+            # self.blocks = nn.Sequential(*self.blocks)
+
+
+
+        rescale_ratio = upsample_feature / output_size
+
+        if np.any(rescale_ratio > 1):
+            pooling_kernel = (int(rescale_ratio[0]), int(max(1, rescale_ratio[1])), int(max(1, rescale_ratio[2]))) # TODO assume only the first layer might be smaller
+            stride = pooling_kernel
+            self.pool = nn.MaxPool3d(kernel_size=pooling_kernel, stride=stride)
+        else:
+            self.pool = nn.Identity()
+
+        print("rescale_ratio", rescale_ratio)
+        print("output_size", output_size)
+        print("output plane", out_planes)
+
+
+        self.output_conv = [nn.Conv3d(out_dim, out_planes, kernel_size=1, stride=1, padding=0),
+                            LayerNorm3d(out_planes),
+                            nn.Conv3d(out_planes, out_planes, kernel_size=3, stride=1, padding=1),]
+        self.output_conv = nn.Sequential(*self.output_conv)
+
 
             # if rescale_ratio[1] == 1/2:
             #     self.blocks.append(nn.ConvTranspose3d(in_planes, out_planes, kernel_size=(1,2,2), stride=(1,2,2), padding=0, output_padding=0))
@@ -111,20 +168,18 @@ class Decoder_Map(nn.Module):
             #     # self.blocks.append(nn.MaxPool3d(kernel_size=pooling_kernel, stride=stride))
             #     self.blocks.append(Conv3DBlock(in_planes, out_planes))
 
-            self.blocks = nn.Sequential(*self.blocks)
-        else:
-            self.blocks = [Conv3DBlock(in_planes, out_planes)]
-            self.blocks = nn.Sequential(*self.blocks)
 
 
 
     def forward(self, x):
         # print("debugging pool input", x.size())
-        x = self.pool(x)
+        # x = self.pool(x)
         # print("debugging pool output", x.size())
         for block in self.blocks:
             x = block(x)
             # print("debugging block output", x.size())
+        x = self.pool(x)
+        x = self.output_conv(x)
         return x 
 
 

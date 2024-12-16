@@ -1,14 +1,14 @@
 #!/bin/bash
 #SBATCH --job-name=nndet_luna
-#SBATCH --output=sbatch_log/swinunter64x128_s0_eval_%j.out
+#SBATCH --output=sbatch_log/swinunter64x128_s0_fp32_%j.out
 #SBATCH --nodes=1
 #SBATCH --time=48:00:00
 #SBATCH --gres=gpu:1
 
 ## SBATCH --account=staff
-#SBATCH --nodelist=bmicgpu07
+#SBATCH --nodelist=octopus04
 #SBATCH --cpus-per-task=4
-#SBATCH --mem 128GB
+#SBATCH --mem 160GB
 
 
 ##SBATCH --account=staff 
@@ -42,4 +42,15 @@ export OMP_NUM_THREADS=1
 echo "Job ID: $SLURM_JOBID"
 echo "Time: $(date)"
 
-nndet_train 018 -o exp.fold=0 train=swinunetr train.mode=resume +augment_cfg.patch_size=[64,128,128] trainer_cfg.gradient_clip_val=0 trainer_cfg.amp_backend=None trainer_cfg.precision=32 trainer_cfg.amp_level=None --sweep
+nndet_train 018 -o exp.fold=0 train=swinunetr train.mode=resume  +augment_cfg.patch_size=[64,128,128] trainer_cfg.gradient_clip_val=0  trainer_cfg.max_num_epochs=60 trainer_cfg.swa_epochs=0 trainer_cfg.warm_iterations=4000  trainer_cfg.gradient_clip_val=0 trainer_cfg.amp_backend=None trainer_cfg.precision=32 trainer_cfg.amp_level=None --sweep
+
+
+
+
+# train.mode=resume 
+
+# nndet_predict 018 SwinUnetrV001_D3V001_3d  --fold 0 --num_models 1 --shape 64_128_128 --no_preprocess --test_split
+
+
+# nndet_eval 018 SwinUnetrV001_D3V001_3d 9 --boxes --analyze_boxes --shape=64_128_128
+

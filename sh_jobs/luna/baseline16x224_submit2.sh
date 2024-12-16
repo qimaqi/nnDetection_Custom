@@ -54,6 +54,6 @@ export OMP_NUM_THREADS=1
 echo "Job ID: $SLURM_JOBID"
 echo "Time: $(date)"
 
-nndet_train 016 -o exp.fold=4 train=v001 train.mode=resume +augment_cfg.patch_size=[16,224,224] --sweep
+# nndet_train 016 -o exp.fold=4 train=v001 train.mode=resume +augment_cfg.patch_size=[16,224,224] --sweep
 
 nndet_train 016 -o exp.fold=5 train=v001 train.mode=resume +augment_cfg.patch_size=[16,224,224] --sweep

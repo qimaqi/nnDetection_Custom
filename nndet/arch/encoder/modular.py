@@ -304,6 +304,7 @@ class VideoMAEEncoder(AbstractEncoder):
             t_patch_size=encoder_cfg["t_patch_size"],
             upsample_func=encoder_cfg["upsample_func"],
             upsample_stage=encoder_cfg["upsample_stage"],
+            skip_connection=encoder_cfg["skip_connection"],
         )
 
         if encoder_cfg['pretrained_path'] is not None:

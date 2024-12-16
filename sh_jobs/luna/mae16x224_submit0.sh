@@ -44,7 +44,15 @@ export OMP_NUM_THREADS=1
 
 # nndet_train 017 -o exp.fold=1 train=mae
 
-nndet_train 016 -o exp.fold=0 train=mae train.mode=resume trainer_cfg.gradient_clip_val=0 trainer_cfg.amp_backend=None trainer_cfg.precision=32 trainer_cfg.amp_level=None +augment_cfg.patch_size=[16,224,224] --sweep
+nndet_train 016 -o exp.fold=9 train=mae train=mae +augment_cfg.patch_size=[16,224,224]  trainer_cfg.gradient_clip_val=0  trainer_cfg.max_num_epochs=60 trainer_cfg.swa_epochs=0 trainer_cfg.warm_iterations=4000  trainer_cfg.gradient_clip_val=0 trainer_cfg.amp_backend=None trainer_cfg.precision=32 trainer_cfg.amp_level=None --sweep
+
+
+
+# nndet_train 016 -o exp.fold=8 train=mae train=mae +augment_cfg.patch_size=[16,224,224] trainer_cfg.gradient_clip_val=11  trainer_cfg.max_num_epochs=5 trainer_cfg.swa_epochs=0 trainer_cfg.warm_iterations=0  trainer_cfg.gradient_clip_val=0 trainer_cfg.amp_backend=None trainer_cfg.precision=32 trainer_cfg.amp_level=None  model_cfg.encoder_kwargs.pretrained_path=null --sweep
+
+
+# nndet_eval 016 VideoMAEUNetV001_D3V001_3d 0 --boxes --analyze_boxes --shape=16_224_224
+
 
 
 # nndet_train 016 -o exp.fold=0 train=mae +augment_cfg.patch_size=[16,224,224] 

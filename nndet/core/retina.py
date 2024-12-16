@@ -216,6 +216,17 @@ class BaseRetinaNet(AbstractModel):
                 Typically includes:
                     `seg_logits`: segmentation logits
         """
+        # both train, val test will come to this function
+        if inp.max() > 200:
+            # train
+            inp = inp / 255.0
+        else:
+            # inference
+            min_val = -2.1
+            max_val = 4.7
+            inp = (inp- min_val) / (max_val - min_val)
+        
+
         features_maps_all = self.decoder(self.encoder(inp))
         feature_maps_head = [features_maps_all[i] for i in self.decoder_levels]
 

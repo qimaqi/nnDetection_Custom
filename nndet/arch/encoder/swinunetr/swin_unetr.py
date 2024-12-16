@@ -780,6 +780,7 @@ class WindowAttention(nn.Module):
 
     def forward(self, x, mask):
         b, n, c = x.shape
+        # print("window x", x.shape)
         qkv = self.qkv(x).reshape(b, n, 3, self.num_heads, c // self.num_heads).permute(2, 0, 3, 1, 4)
         q, k, v = qkv[0], qkv[1], qkv[2]
         q = q * self.scale
@@ -1160,11 +1161,15 @@ class BasicLayer(nn.Module):
         if len(x_shape) == 5:
             b, c, d, h, w = x_shape
             window_size, shift_size = get_window_size((d, h, w), self.window_size, self.shift_size)
+            # print("window_size", window_size)
+            # print("shift_size", shift_size)
             x = rearrange(x, "b c d h w -> b d h w c")
             dp = int(np.ceil(d / window_size[0])) * window_size[0]
             hp = int(np.ceil(h / window_size[1])) * window_size[1]
             wp = int(np.ceil(w / window_size[2])) * window_size[2]
             attn_mask = compute_mask([dp, hp, wp], window_size, shift_size, x.device)
+            # print("attn_mask", attn_mask, attn_mask.shape)
+
             for blk in self.blocks:
                 x = blk(x, attn_mask)
             x = x.view(b, d, h, w, -1)

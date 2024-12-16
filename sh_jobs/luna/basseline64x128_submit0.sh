@@ -57,8 +57,8 @@ export OMP_NUM_THREADS=1
 echo "Job ID: $SLURM_JOBID"
 echo "Time: $(date)"
 
-# nndet_train 018 -o exp.fold=0 train=v001  +augment_cfg.patch_size=[64,128,128] --sweep
-# nndet_eval 018 RetinaUNetV001_D3V001_3d 0 --boxes --analyze_boxes --shape=64_128_128
+# nndet_train 018 -o exp.fold=0 train=v001 train.mode=resume +augment_cfg.patch_size=[64,128,128] --sweep
+nndet_eval 018 RetinaUNetV001_D3V001_3d 1 --boxes --analyze_boxes --shape=64_128_128
 
 
 # nndet_train 018 -o exp.fold=2 train=v001  +augment_cfg.patch_size=[64,128,128] --sweep

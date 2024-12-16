@@ -46,16 +46,16 @@ trainer_cfg:
   num_val_batches_per_epoch: 100 # number of val batches per epoch
 
   initial_lr: 1.e-4 # initial learning rate to start with
-  seperate_lr: True
-  freeze_encoder: False
-  sgd_momentum: 0.5 # momentum term
+  seperate_lr: False
+  freeze_encoder: True
+  sgd_momentum: 0.9 # momentum term
   sgd_nesterov: True # nesterov momentum
-  weight_decay: 1.e-6 # weight decay for optimizer
+  weight_decay: 3.e-5 # weight decay for optimizer
 
   warm_iterations: 4000 # number of iterations with warmup
   warm_lr: 1.e-6 # learning rate to start warmup from
 
-  poly_gamma: 0.9
+  poly_gamma: 0.5
 
   swa_epochs: 10 # number of epochs to run swa with cyclic learning rate
   # sweep_ckpt: Select checkpoint identifier for sweeping. Default "last".
@@ -63,20 +63,21 @@ trainer_cfg:
 
 model_cfg:
   encoder_kwargs:
-    img_size: 128
+    img_size: 224
     patch_size: 16
-    num_frames: 64
+    num_frames: 16
     in_chans: 3
     embed_dim: 1024
     depth: 24
     num_heads: 16
     mlp_ratio: 4.0
-    t_patch_size: 8 
+    t_patch_size: 2 
     no_qkv_bias: False 
     sep_pos_embed: True
-    upsample_func: "transpose"
-    upsample_stage: "direct"
-    output_layers: [5,10,15,19,23] # [0, 5, 11, 17, 23] for 16x224x224, [0, 5, 10, 15, 20, 23] for 64x128x128
+    skip_connection: False
+    upsample_func: "transpose" # transpose, interpolate
+    upsample_stage: "gradually" #  gradually, direct
+    output_layers: [5, 11, 17, 23] # [0, 5, 11, 17, 23] for 16x224x224, [0, 5, 10, 15, 20, 23] for 64x128x128
     pretrained_path: /scratch_net/schusch/qimaqi/cbct_proj/CBCT/Video_MAE_Seg/checkpoints/mae_pretrain_vit_large_k700.pth
 
   decoder_kwargs: # keyword arguments passed to decoder
@@ -127,8 +128,6 @@ model_cfg:
 
   plan_arch_overwrites: {} # overwrite arguments of architecture
   plan_anchors_overwrites: {} # overwrite arguments of anchors
-
-
 
 debug:
   num_cases_val: 10

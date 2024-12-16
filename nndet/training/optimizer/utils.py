@@ -60,8 +60,9 @@ def get_params_no_wd_on_norm_freeze(model: torch.nn.Module, weight_decay: float,
             # print("weight decay skipped for", name)
             if 'encoder' in name:
                 # no_decay_params_encoder.append(param)
-                # print("no weight decay for encoder", name)
-                pass 
+                if 'decoder' not in name:
+                    print("freeze encoder", name)
+                    pass 
             else:
                 no_decay_params_other.append(param)
 

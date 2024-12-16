@@ -181,6 +181,7 @@ class VideoMAE_Encoder(nn.Module):
         use_lora=0, # 0 for not use lora
         upsample_func='conv',
         upsample_stage='direct',
+        skip_connection=False,
         output_layers=[5,11,17,23],
     ):
         super().__init__()
@@ -217,7 +218,11 @@ class VideoMAE_Encoder(nn.Module):
         self.token_shape = [num_frames // t_patch_size, img_size // patch_size, img_size // patch_size]
         self.embed_dim = embed_dim
 
+        self.skip_connection = skip_connection
+
         self.intermediate_feat_layer = output_layers
+
+
         # we need stage 0 1 2 3 4, stage 1 from 5, stage 2 from 11, stage 3 from 17, stage 4 from last
  
         
@@ -260,8 +265,20 @@ class VideoMAE_Encoder(nn.Module):
         )
 
         # if self.map_to_decoder_type == 'conv':
-        self.decoder0_upsampler = Decoder_Map(in_planes = in_chans, out_planes=feature_shapes[0][0], input_size=feature_shapes[0][1:], output_size=feature_shapes[0][1:],
-                                                upsample_func=upsample_func, upsample_stage=upsample_stage)
+        if self.skip_connection:
+            self.decoder0_upsampler = Decoder_Map(in_planes = in_chans, out_planes=feature_shapes[0][0], input_size=feature_shapes[0][1:], output_size=feature_shapes[0][1:],
+                                                    upsample_func=upsample_func, upsample_stage=upsample_stage)
+        else:
+            print("set layer", 0, 'in plane', embed_dim, 'out plane', feature_shapes[0][0], 'input size', feature_shapes[0][1:], 'output size', feature_shapes[0][1:])
+            setattr
+            self.decoder0_upsampler = Decoder_Map(in_planes=embed_dim,
+                                             out_planes=feature_shapes[0][0],
+                                             input_size=self.token_shape,
+                                             output_size=feature_shapes[0][1:],
+                                             upsample_func=upsample_func,
+                                             upsample_stage=upsample_stage)
+            
+        
 
         assert len(self.intermediate_feat_layer) == len(feature_shapes) - 1, f"len(self.intermediate_feat_layer) {len(self.intermediate_feat_layer)} != len(feature_shapes) {len(feature_shapes)} - 1 "
         for num_j, layer_j in  enumerate(self.intermediate_feat_layer):
@@ -432,9 +449,10 @@ class VideoMAE_Encoder(nn.Module):
         #  B, C, T, H, W 
         # print("encoder sample_x", x.size())
         multi_scale_feat = []
-        feat_0 = self.decoder0_upsampler(x)
-        # print("map to decoder 0", feat_0.size())
-        multi_scale_feat.append(feat_0) # do not need repeated color
+        if self.skip_connection:
+            feat_0 = self.decoder0_upsampler(x)
+            # print("map to decoder 0", feat_0.size())
+            multi_scale_feat.append(feat_0) # do not need repeated color
         x = self.patch_embed(x)
         N, T, L, C = x.shape
 
@@ -490,15 +508,25 @@ class VideoMAE_Encoder(nn.Module):
                 intermediate_feat = self.convert_to_3d_tensor(x)
 
                 # print("layer_i", layer_i, intermediate_feat.size())
-                intermediate_feat = getattr(self, f"decoder{layer_i}_upsampler")(intermediate_feat)
-                # print("map to decoder", intermediate_feat.size())
-                multi_scale_feat.append(intermediate_feat)
+                if self.skip_connection:
+                    intermediate_feat = getattr(self, f"decoder{layer_i}_upsampler")(intermediate_feat)
+                    # print("map to decoder", intermediate_feat.size())
+                    multi_scale_feat.append(intermediate_feat)
         
-        # raise ValueError("debugging")
+        if not self.skip_connection:
+            # use the last layer feature as shown in vitdet
+            intermediate_feat = self.convert_to_3d_tensor(x)
 
-        # intermediate_feat = self.convert_to_3d_tensor(x)
-        # intermediate_feat = self.decoder24_upsampler(intermediate_feat)
-        # multi_scale_feat.append(intermediate_feat)
+            feat0 = self.decoder0_upsampler(intermediate_feat)
+            multi_scale_feat.append(feat0)
+            # print("map to decoder 0", feat0.size())
+            for num_j, layer_j in  enumerate(self.intermediate_feat_layer):
+                intermediate_feat = self.convert_to_3d_tensor(x)
+                intermediate_feat = getattr(self, f"decoder{layer_j}_upsampler")(intermediate_feat)
+                # print("map to decoder", layer_j, intermediate_feat.size())
+                # print("intermediate_feat_layer", self.intermediate_feat_layer)
+                multi_scale_feat.append(intermediate_feat)
+
         
         return multi_scale_feat
 

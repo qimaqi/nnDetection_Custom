@@ -323,13 +323,20 @@ def _train(
             train_data_dir=data_dir,
             case_ids=case_ids,
             run_prediction=True,
+            debug=False,
         )
+
+        print("Sweep inference", inference_plan)
 
         plan["inference_plan"] = inference_plan
         save_pickle(plan, train_dir / "plan_inference.pkl")
 
+        # what is ensembler_cls
         ensembler_cls = module.get_ensembler_cls(
-            key="boxes", dim=plan["network_dim"]) # TODO: make this configurable    
+            key="boxes", dim=plan["network_dim"]) # TODO: make this configurable  
+
+        # BoxEnsemblerSelective
+        
         for restore in [True, False]:
             target_dir = train_dir / "val_predictions" if restore else \
                 train_dir / "val_predictions_preprocessed"
@@ -358,6 +365,7 @@ def _train(
             test=False,
             do_boxes_eval=True, # TODO: make this configurable
             do_analyze_boxes=True, # TODO: make this configurable
+            shape=input_patch_size,
             
         )
 

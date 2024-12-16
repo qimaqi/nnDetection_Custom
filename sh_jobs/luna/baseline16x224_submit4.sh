@@ -53,6 +53,6 @@ echo "Job ID: $SLURM_JOBID"
 echo "Time: $(date)"
 
 # nndet_train 016 -o exp.fold=8 train=v001 +augment_cfg.patch_size=[16,224,224] train.mode=resume --sweep
-nndet_train 016 -o exp.fold=8 train.mode=resume  train=v001 +augment_cfg.patch_size=[16,224,224] --sweep
+# nndet_train 016 -o exp.fold=8 train.mode=resume  train=v001 +augment_cfg.patch_size=[16,224,224] --sweep
 
 nndet_train 016 -o exp.fold=9 train.mode=resume  train=v001 +augment_cfg.patch_size=[16,224,224] --sweep

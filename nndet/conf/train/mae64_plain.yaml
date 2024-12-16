@@ -50,7 +50,7 @@ trainer_cfg:
   freeze_encoder: False
   sgd_momentum: 0.5 # momentum term
   sgd_nesterov: True # nesterov momentum
-  weight_decay: 1.e-6 # weight decay for optimizer
+  weight_decay: 5.e-3 # weight decay for optimizer
 
   warm_iterations: 4000 # number of iterations with warmup
   warm_lr: 1.e-6 # learning rate to start warmup from
@@ -75,7 +75,8 @@ model_cfg:
     no_qkv_bias: False 
     sep_pos_embed: True
     upsample_func: "transpose"
-    upsample_stage: "direct"
+    upsample_stage: "gradually"
+    skip_connection: False
     output_layers: [5,10,15,19,23] # [0, 5, 11, 17, 23] for 16x224x224, [0, 5, 10, 15, 20, 23] for 64x128x128
     pretrained_path: /scratch_net/schusch/qimaqi/cbct_proj/CBCT/Video_MAE_Seg/checkpoints/mae_pretrain_vit_large_k700.pth
 

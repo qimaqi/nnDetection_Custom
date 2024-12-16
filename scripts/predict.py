@@ -39,6 +39,7 @@ def run(cfg: dict,
         num_models: int = None,
         num_tta_transforms: int = None,
         test_split: bool = False,
+        val_fold: int = -1,
         num_processes: int = 3,
         ):
     """
@@ -83,7 +84,10 @@ def run(cfg: dict,
     prediction_dir.mkdir(parents=True, exist_ok=True)
     if test_split:
         source_dir = preprocessed_output_dir / plan["data_identifier"] / "imagesTr"
-        case_ids = load_pickle(training_dir / "splits.pkl")[0]["test"]
+        if val_fold != -1:
+            case_ids = load_pickle(training_dir / "splits.pkl")[val_fold]["val"]
+        else:
+            case_ids = load_pickle(training_dir / "splits.pkl")[0]["test"]
     else:
         source_dir = preprocessed_output_dir / plan["data_identifier"] / "imagesTs"
         case_ids = None
@@ -198,6 +202,7 @@ def main():
     task_name = get_task(task, name=True)
     task_model_dir = Path(os.getenv("det_models"))
     training_dir = get_training_dir(task_model_dir / task_name / model, fold, shape)
+    # get the model from fold 
 
     process = args.no_preprocess
     if test_split and process:
@@ -236,6 +241,7 @@ def main():
         num_models=num_models,
         num_tta_transforms=num_tta_transforms,
         test_split=test_split,
+        val_fold=fold,
         num_processes=num_processes,
         )
 

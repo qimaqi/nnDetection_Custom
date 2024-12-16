@@ -1,11 +1,11 @@
 #!/bin/bash
 #SBATCH --job-name=nndet_luna
-#SBATCH --output=sbatch_log/mae_16x224_s2_%j.out
+#SBATCH --output=sbatch_log/mae_16x224_s2_plain%j.out
 #SBATCH --nodes=1
 #SBATCH --time=48:00:00
 #SBATCH --gres=gpu:1
 
-#SBATCH --nodelist=bmicgpu07
+#SBATCH --nodelist=octopus01
 #SBATCH --cpus-per-task=4
 #SBATCH --mem 96GB
 
@@ -47,11 +47,11 @@ export OMP_NUM_THREADS=1
 # nndet_train 016 -o exp.fold=0 train=mae trainer_cfg.amp_backend=None trainer_cfg.precision=32 trainer_cfg.amp_level=None +augment_cfg.patch_size=[16,224,224] trainer_cfg.gradient_clip_val=5
 
 
-nndet_train 016 -o exp.fold=2 train=mae +augment_cfg.patch_size=[16,224,224] trainer_cfg.gradient_clip_val=0 trainer_cfg.amp_backend=None trainer_cfg.precision=32 trainer_cfg.amp_level=None
+# nndet_train 016 -o exp.fold=2 train=mae +augment_cfg.patch_size=[16,224,224] trainer_cfg.gradient_clip_val=0 trainer_cfg.amp_backend=None trainer_cfg.precision=32 trainer_cfg.amp_level=None
+
+# nndet_train 016 -o exp.fold=3 train=mae +augment_cfg.patch_size=[16,224,224] trainer_cfg.gradient_clip_val=0 trainer_cfg.amp_backend=None trainer_cfg.precision=32 trainer_cfg.amp_level=None trainer_cfg.max_num_epochs=5 --sweep
 
 
+nndet_train 016 -o exp.fold=0 train=mae_plain trainer_cfg.gradient_clip_val=0 trainer_cfg.amp_backend=None trainer_cfg.precision=32 trainer_cfg.amp_level=None +augment_cfg.patch_size=[16,224,224] trainer_cfg.max_num_epochs=60 --sweep
 
-
-# 1,295.094 Total estimated model params size (MB)
-# nndet_train 017 -o exp.fold=0 train=mae train.mode=resume
 

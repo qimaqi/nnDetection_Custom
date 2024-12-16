@@ -1,11 +1,11 @@
 #!/bin/bash
 #SBATCH --job-name=nndet_luna
-#SBATCH --output=sbatch_log/mae64_submit_0_eval_%j.out
+#SBATCH --output=sbatch_log/mae64_submit_0_fp32_debug_%j.out
 #SBATCH --nodes=1
 #SBATCH --time=48:00:00
 #SBATCH --gres=gpu:1
 
-#SBATCH --nodelist=bmicgpu09
+#SBATCH --nodelist=bmicgpu08
 #SBATCH --cpus-per-task=4
 #SBATCH --mem 160GB
 
@@ -44,13 +44,8 @@ echo "Job ID: $SLURM_JOBID"
 echo "Time: $(date)"
 
 
-nndet_train 018 -o exp.fold=0 train=mae64 train.mode=resume +augment_cfg.patch_size=[64,128,128] trainer_cfg.gradient_clip_val=0 trainer_cfg.amp_backend=None trainer_cfg.precision=32 trainer_cfg.amp_level=None --sweep
+nndet_train 018 -o exp.fold=0 train=mae64_plain  +augment_cfg.patch_size=[64,128,128] trainer_cfg.gradient_clip_val=0  trainer_cfg.max_num_epochs=60 trainer_cfg.swa_epochs=0 trainer_cfg.warm_iterations=4000  trainer_cfg.gradient_clip_val=0 trainer_cfg.amp_backend=None trainer_cfg.precision=32 trainer_cfg.amp_level=None --sweep
 
-# nndet_train 018 -o exp.fold=1 train=mae64 +augment_cfg.patch_size=[64,128,128] trainer_cfg.gradient_clip_val=0 trainer_cfg.amp_backend=None trainer_cfg.precision=32 trainer_cfg.amp_level=None --sweep
-
-# nndet_eval 018 VideoMAEUNetV001_D3V001_3d 0 --boxes --analyze_boxes --shape=64_128_128
+# nndet_train 018 -o exp.fold=0 train=mae64 train.mode=resume +augment_cfg.patch_size=[64,128,128] trainer_cfg.gradient_clip_val=0  trainer_cfg.max_num_epochs=60 trainer_cfg.swa_epochs=0 trainer_cfg.warm_iterations=4000  trainer_cfg.gradient_clip_val=0 trainer_cfg.amp_backend=None trainer_cfg.precision=32 trainer_cfg.amp_level=None --sweep
 
 
-
-
-# nndet_train 016 -o exp.fold=2 train=mae64 trainer_cfg.amp_backend=None trainer_cfg.precision=32 trainer_cfg.amp_level=None +augment_cfg.patch_size=[64,128,128] model_cfg.encoder_kwargs.output_layers="[5, 11, 17, 23]" 

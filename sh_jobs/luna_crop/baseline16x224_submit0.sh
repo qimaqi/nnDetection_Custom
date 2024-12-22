@@ -1,11 +1,11 @@
 #!/bin/bash
-#SBATCH --job-name=luna_cos_s0
-#SBATCH --output=sbatch_log/luna_cos_16x224_s0_%j.out
+#SBATCH --job-name=nndet_consolidate
+#SBATCH --output=sbatch_log/luna_cos_16x224_nndet_consolidate_%j.out
 #SBATCH --nodes=1
 #SBATCH --time=48:00:00
 #SBATCH --gres=gpu:1
 
-#SBATCH --nodelist=octopus03
+#SBATCH --nodelist=octopus04
 #SBATCH --cpus-per-task=4
 #SBATCH --mem 96GB
 #SBATCH --mail-type=BEGIN,END,FAIL
@@ -44,8 +44,13 @@ echo "Time: $(date)"
 #For luna costum 16*224*224
 
 # nndet_unpack ${det_data}/Task017_Luna_crop/preprocessed/D3V001_3d/imagesTr 6
-nndet_train 017 -o exp.fold=0 train=v001 +augment_cfg.patch_size=[16,224,224] --sweep
-# nndet_predict 017 RetinaUNetV001_D3V001_3d --fold -1
+#nndet_train 017 -o exp.fold=0 train=v001 +augment_cfg.patch_size=[16,224,224] --sweep
+#nndet_train 017 -o exp.fold=0 train=v001 train.mode=resume +augment_cfg.patch_size=[16,224,224] --sweep
+#not needed nndet_eval 017 RetinaUNetV001_D3V001_3d 0 --boxes --analyze_boxes
+#after running all folds
+nndet_consolidate 017 RetinaUNetV001_D3V001_3d --sweep_boxes --shape=16_224_224 --sweep_boxes --num_folds=10
+# nndet_predict 017 RetinaUNetV001_D3V001_3d --fold -1 --shape=16_224_224 --sweep_boxes --num_folds=10
+
 # nndet_consolidate 017 RetinaUNetV001_D3V001_3d --sweep_boxes
 # nndet_eval 017 RetinaUNetV001_D3V001_3d 0 --boxes --analyze_boxes
 #nndet_unpack ${det_data}/Task000D3_Example/preprocessed/D3V001_3d/imagesTr 6

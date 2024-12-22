@@ -47,10 +47,12 @@ class D3V001(AbstractPlanner):
             )
 
         # determine if additional low res model needs to be trained
-        plan_3d["trigger_lr1"] = self.trigger_low_res_model(
-            prev_res_patch_size=plan_3d["patch_size"],
-            transpose_forward=plan_3d["transpose_forward"],
-        )
+        plan_3d["trigger_lr1"] = False 
+        
+        # self.trigger_low_res_model(
+        #     prev_res_patch_size=plan_3d["patch_size"],
+        #     transpose_forward=plan_3d["transpose_forward"],
+        # )
         identifiers.append(self.save_plan(plan=plan_3d, mode=plan_3d["mode"]))
 
         if plan_3d["trigger_lr1"]:

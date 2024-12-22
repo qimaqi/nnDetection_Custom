@@ -50,17 +50,16 @@ def get_params_no_wd_on_norm_freeze(model: torch.nn.Module, weight_decay: float,
     for name, param in model.named_parameters():
         if not hasattr(param, "no_wd"):
             # print("weight decay for", name)
-            if 'encoder' in name:
+            if 'encoder' in name and 'decoder' not in name :
                 # decay_params_encoder.append(param)
                 # print("no weight decay for encoder", name)
-                pass 
+                print("ignore param", name)
             else:
                 decay_params_other.append(param)
         else:
             # print("weight decay skipped for", name)
-            if 'encoder' in name:
-                # no_decay_params_encoder.append(param)
-                # print("no weight decay for encoder", name)
+            if 'encoder' in name and 'decoder' not in name :
+                print("ignore param", name)
                 pass 
             else:
                 no_decay_params_other.append(param)

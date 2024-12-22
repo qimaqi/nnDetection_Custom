@@ -131,6 +131,12 @@ class BaseRetinaNet(AbstractModel):
         target_seg: Tensor = targets["target_seg"]
 
         pred_detection, anchors, pred_seg = self(images)
+
+        # print("train result debug", pred_detection['box_deltas'].min(), pred_detection['box_deltas'].max(), pred_detection['box_deltas'].dtype)
+        # print("anchors", anchors[0].min(), anchors[0].max(), anchors[0].dtype)
+        # print("seg", pred_seg['seg_logits'].min(), pred_seg['seg_logits'].max(), pred_seg['seg_logits'].dtype)
+
+
         labels, matched_gt_boxes = self.assign_targets_to_anchors(
             anchors, target_boxes, target_classes)
 
@@ -216,9 +222,15 @@ class BaseRetinaNet(AbstractModel):
                 Typically includes:
                     `seg_logits`: segmentation logits
         """
-        print("inp", inp.shape, inp.min(), inp.max())
+        # print("inp", inp.shape, inp.min(), inp.max())
+ 
+
         features_maps_all = self.decoder(self.encoder(inp))
         feature_maps_head = [features_maps_all[i] for i in self.decoder_levels]
+
+        # for feat_i in feature_maps_head:
+        #     print("feat_i", feat_i.shape, feat_i.min(), feat_i.max(), feat_i.mean(), feat_i.dtype)
+
 
         pred_detection = self.head(feature_maps_head)
         anchors = self.anchor_generator(inp, feature_maps_head)
@@ -405,7 +417,19 @@ class BaseRetinaNet(AbstractModel):
                 'pred_labels': List[Tensor]: predicted class List[[R]]
                 'pred_seg': Tensor: predicted segmentation [N, C, dims]
         """
-        pred_detection, anchors, pred_seg = self(images)
+        # print("images", images.shape, images.min(), images.max(), images.dtype)
+
+        with torch.cuda.amp.autocast(enabled=False):
+            pred_detection, anchors, pred_seg = self(images)
+
+        # assert not inf or NaN and pred_detection['box_deltas'] 
+        assert not torch.isnan(pred_detection['box_deltas']).any()
+        assert not torch.isinf(pred_detection['box_deltas']).any()
+        # print("test result debug", pred_detection['box_deltas'].min(), pred_detection['box_deltas'].max(), pred_detection['box_deltas'].dtype)
+        # print("anchors", anchors[0].min(), anchors[0].max(), anchors[0].dtype)
+        # print("seg", pred_seg['seg_logits'].min(), pred_seg['seg_logits'].max(), pred_seg['seg_logits'].dtype)
+        # raise ValueError('stop here')
+
         prediction = self.postprocess_for_inference(
             images=images,
             pred_detection=pred_detection,
@@ -413,3 +437,102 @@ class BaseRetinaNet(AbstractModel):
             anchors=anchors,
         )
         return prediction
+
+# np torch.Size([4, 1, 16, 224, 224]) tensor(-2.1874, device='cuda:0') tensor(1.6805, device='cuda:0')                  | 0/104 [00:00<?, ?it/s]
+# test result debug {'box_deltas': tensor([[   -inf,    -inf,    -inf,    -inf,    -inf,    -inf],
+#         [   -inf,    -inf,    -inf,    -inf,    -inf,    -inf],
+#         [   -inf,    -inf,    -inf,    -inf,    -inf,    -inf],
+#         ...,
+#         [-0.0844, -0.0249, -0.0569, -0.0828, -0.0355, -0.0009],
+#         [-0.0933, -0.0017, -0.0524, -0.0375, -0.0268, -0.1099],
+#         [-0.0822, -0.0042, -0.0320,  0.0188,  0.0045, -0.1328]],
+#        device='cuda:0', dtype=torch.float16), 'box_logits': tensor([[-inf],
+#         [-inf],
+#         [-inf],
+#         ...,
+#         [-inf],
+#         [-inf],
+#         [-inf]], device='cuda:0', dtype=torch.float16)}
+
+
+# train result debug {'box_deltas': tensor([[ 0.0868,  0.0029,  0.0204,  0.0401, -0.0095,  0.0198],
+#         [ 0.0840, -0.0041,  0.0139,  0.0226, -0.0097, -0.1011],
+#         [ 0.0745,  0.0082,  0.0107,  0.0393, -0.0116, -0.2100],
+#         ...,
+#         [-0.1264, -0.0394, -0.0198,  0.0786, -0.0776,  0.2166],
+#         [-0.1241, -0.0115, -0.0026,  0.1290, -0.0841,  0.1109],
+#         [-0.1144, -0.0252,  0.0317,  0.1842, -0.0229,  0.0680]],
+#        device='cuda:0', grad_fn=<ReshapeAliasBackward0>), 'box_logits': tensor([[-3.2835],
+#         [-3.2921],
+#         [-3.2927],
+#         ...,
+#         [-3.9670],
+#         [-4.0268],
+#         [-4.1811]], device='cuda:0', grad_fn=<ReshapeAliasBackward0>)}
+
+# feat_i torch.Size([4, 128, 8, 112, 112]) tensor(-66467.7578, device='cuda:0', grad_fn=<MinBackward1>) tensor(75487.1641, device='cuda:0', grad_fn=<MaxBackward1>)
+# feat_i torch.Size([4, 128, 4, 56, 56]) tensor(-26676.1172, device='cuda:0', grad_fn=<MinBackward1>) tensor(29650.8730, device='cuda:0', grad_fn=<MaxBackward1>)
+# feat_i torch.Size([4, 128, 4, 28, 28]) tensor(-13842.2520, device='cuda:0', grad_fn=<MinBackward1>) tensor(10250.9951, device='cuda:0', grad_fn=<MaxBackward1>)
+# feat_i torch.Size([4, 128, 4, 14, 14]) tensor(-741.7260, device='cuda:0', grad_fn=<MinBackward1>) tensor(865.0156, device='cuda:0', grad_fn=<MaxBackward1>)
+
+# anchors [tensor([[ -2.0000,  -3.5000,   2.0000,   3.5000,  -3.5000,   3.5000],
+#         [ -2.0000,  -3.5000,   2.0000,   3.5000,  -4.5000,   4.5000],
+#         [ -2.0000,  -3.5000,   2.0000,   3.5000,  -5.5000,   5.5000],
+#         ...,
+#         [  4.0000, 176.0000,  20.0000, 240.0000, 180.0000, 236.0000],
+#         [  4.0000, 176.0000,  20.0000, 240.0000, 172.0000, 244.0000],
+#         [  4.0000, 176.0000,  20.0000, 240.0000, 164.0000, 252.0000]],
+#        device='cuda:0'), tensor([[ -2.0000,  -3.5000,   2.0000,   3.5000,  -3.5000,   3.5000],
+#         [ -2.0000,  -3.5000,   2.0000,   3.5000,  -4.5000,   4.5000],
+#         [ -2.0000,  -3.5000,   2.0000,   3.5000,  -5.5000,   5.5000],
+#         ...,
+#         [  4.0000, 176.0000,  20.0000, 240.0000, 180.0000, 236.0000],
+#         [  4.0000, 176.0000,  20.0000, 240.0000, 172.0000, 244.0000],
+#         [  4.0000, 176.0000,  20.0000, 240.0000, 164.0000, 252.0000]],
+#        device='cuda:0'), tensor([[ -2.0000,  -3.5000,   2.0000,   3.5000,  -3.5000,   3.5000],
+#         [ -2.0000,  -3.5000,   2.0000,   3.5000,  -4.5000,   4.5000],
+#         [ -2.0000,  -3.5000,   2.0000,   3.5000,  -5.5000,   5.5000],
+#         ...,
+#         [  4.0000, 176.0000,  20.0000, 240.0000, 180.0000, 236.0000],
+#         [  4.0000, 176.0000,  20.0000, 240.0000, 172.0000, 244.0000],
+#         [  4.0000, 176.0000,  20.0000, 240.0000, 164.0000, 252.0000]],
+#        device='cuda:0'), tensor([[ -2.0000,  -3.5000,   2.0000,   3.5000,  -3.5000,   3.5000],
+#         [ -2.0000,  -3.5000,   2.0000,   3.5000,  -4.5000,   4.5000],
+#         [ -2.0000,  -3.5000,   2.0000,   3.5000,  -5.5000,   5.5000],
+#         ...,
+#         [  4.0000, 176.0000,  20.0000, 240.0000, 180.0000, 236.0000],
+#         [  4.0000, 176.0000,  20.0000, 240.0000, 172.0000, 244.0000],
+#         [  4.0000, 176.0000,  20.0000, 240.0000, 164.0000, 252.0000]],
+
+
+
+# test
+# Transform:   0%|                                                                                                        | 0/1 [00:00<?, ?it/sfeat_i torch.Size([4, 128, 8, 112, 112]) tensor(-56896., device='cuda:0', dtype=torch.float16) tensor(58784., device='cuda:0', dtype=torch.float16) tensor(978., device='cuda:0', dtype=torch.float16)
+# feat_i torch.Size([4, 128, 4, 56, 56]) tensor(-21232., device='cuda:0', dtype=torch.float16) tensor(22432., device='cuda:0', dtype=torch.float16) tensor(-100., device='cuda:0', dtype=torch.float16)
+# feat_i torch.Size([4, 128, 4, 28, 28]) tensor(-9392., device='cuda:0', dtype=torch.float16) tensor(6904., device='cuda:0', dtype=torch.float16) tensor(26.7812, device='cuda:0', dtype=torch.float16)
+# feat_i torch.Size([4, 128, 4, 14, 14]) tensor(-697.5000, device='cuda:0', dtype=torch.float16) tensor(792.5000, device='cuda:0', dtype=torch.float16) tensor(23.2656, device='cuda:0', dtype=torch.float16)
+# test result debug {'box_deltas': tensor([[   -inf,    -inf,    -inf,    -inf,    -inf,    -inf],
+#         [   -inf,    -inf,    -inf,    -inf,    -inf,    -inf],
+#         [   -inf,    -inf,    -inf,    -inf,    -inf,    -inf],
+#         ...,
+#         [-0.0844, -0.0249, -0.0569, -0.0828, -0.0355, -0.0009],
+#         [-0.0933, -0.0017, -0.0524, -0.0375, -0.0268, -0.1099],
+#         [-0.0822, -0.0042, -0.0320,  0.0188,  0.0045, -0.1328]],
+#        device='cuda:0', dtype=torch.float16), 'box_logits': tensor([[-inf],
+#         [-inf],
+#         [-inf],
+#         ...,
+#         [-inf],
+#         [-inf],
+#         [-inf]], device='cuda:0', dtype=torch.float16)}
+
+
+
+# feat_i torch.Size([4, 128, 8, 112, 112]) tensor(-67769.7578, device='cuda:0', grad_fn=<MinBackward1>) tensor(73758.4141, device='cuda:0', grad_fn=<MaxBackward1>) tensor(1017.4573, device='cuda:0', grad_fn=<MeanBackward0>) torch.float32
+# feat_i torch.Size([4, 128, 4, 56, 56]) tensor(-34232.6758, device='cuda:0', grad_fn=<MinBackward1>) tensor(37332.7031, device='cuda:0', grad_fn=<MaxBackward1>) tensor(-122.2526, device='cuda:0', grad_fn=<MeanBackward0>) torch.float32
+# feat_i torch.Size([4, 128, 4, 28, 28]) tensor(-12806.6895, device='cuda:0', grad_fn=<MinBackward1>) tensor(11468.0576, device='cuda:0', grad_fn=<MaxBackward1>) tensor(21.2834, device='cuda:0', grad_fn=<MeanBackward0>) torch.float32
+# feat_i torch.Size([4, 128, 4, 14, 14]) tensor(-834.0378, device='cuda:0', grad_fn=<MinBackward1>) tensor(971.3677, device='cuda:0', grad_fn=<MaxBackward1>) tensor(16.0727, device='cuda:0', grad_fn=<MeanBackward0>) torch.float32
+# train result debug tensor(-2.0145, device='cuda:0', grad_fn=<MinBackward1>) tensor(12.3476, device='cuda:0', grad_fn=<MaxBackward1>) torch.float32
+# anchors tensor(-44., device='cuda:0') tensor(252., device='cuda:0') torch.float32
+# seg tensor(-134.3690, device='cuda:0', grad_fn=<MinBackward1>) tensor(417.7444, device='cuda:0', grad_fn=<MaxBackward1>) torch.float32
+# Epoch 46:   0%|▏ 

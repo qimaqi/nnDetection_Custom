@@ -29,7 +29,7 @@ augment_cfg:
 trainer_cfg:
   gpus: 1 # number of gpus
   accelerator: # distributed backend
-  precision: "bf16" # mixed precision
+  precision: 16 # mixed precision
   amp_backend: native # mixed precision backend
   amp_level: O1 # when mixed precision backend is APEX use O1
   # Per default training is deterministic, non-deterministic allows
@@ -49,7 +49,7 @@ trainer_cfg:
   seperate_lr: True
   sgd_momentum: 0.9 # momentum term
   sgd_nesterov: True # nesterov momentum
-  weight_decay: 1.e-5 # weight decay for optimizer
+  weight_decay: 3.e-5 # weight decay for optimizer
 
   warm_iterations: 4000 # number of iterations with warmup
   warm_lr: 1.e-6 # learning rate to start warmup from
@@ -118,3 +118,6 @@ model_cfg:
 
   plan_arch_overwrites: {} # overwrite arguments of architecture
   plan_anchors_overwrites: {} # overwrite arguments of anchors
+
+debug:
+  num_cases_val: 10

@@ -23,6 +23,7 @@ from nndet.arch.blocks.basic import AbstractBlock
 from nndet.arch.encoder.videomae_encoder import VideoMAE_Encoder, load_pretrained_weights_encoder
 from nndet.arch.encoder.swinunetr import SwinUNETR_Encoder
 import numpy as np
+import os 
 
 __all__ = ["Encoder", "VideoMAEEncoder", "SwinUnetrEncoder"]
 
@@ -304,9 +305,10 @@ class VideoMAEEncoder(AbstractEncoder):
             t_patch_size=encoder_cfg["t_patch_size"],
             upsample_func=encoder_cfg["upsample_func"],
             upsample_stage=encoder_cfg["upsample_stage"],
+            skip_connection=encoder_cfg["skip_connection"],
         )
 
-        if encoder_cfg['pretrained_path'] is not None:
+        if encoder_cfg['pretrained_path'] is not None and os.path.exists(encoder_cfg['pretrained_path']):
             load_pretrained_weights_encoder(self.stages, encoder_cfg)
 
         self.out_channels = feature_shapes[:, 0].tolist()

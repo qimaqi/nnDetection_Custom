@@ -74,10 +74,11 @@ model_cfg:
     t_patch_size: 2 
     no_qkv_bias: False 
     sep_pos_embed: True
+    skip_connection: True
     upsample_func: "transpose" # transpose, interpolate
-    upsample_stage: "direct" #  gradually, direct
+    upsample_stage: "gradually" #  gradually, direct
     output_layers: [5, 11, 17, 23] # [0, 5, 11, 17, 23] for 16x224x224, [0, 5, 10, 15, 20, 23] for 64x128x128
-    pretrained_path: /scratch_net/schusch/qimaqi/cbct_proj/CBCT/Video_MAE_Seg/checkpoints/mae_pretrain_vit_large_k700.pth
+    pretrained_path: /usr/bmicnas02/data-biwi-01/lung_detection/nnDetection_Custom/checkpoints/mae_pretrain_vit_large_k700.pth
 
   decoder_kwargs: # keyword arguments passed to decoder
     min_out_channels: 8
@@ -127,3 +128,6 @@ model_cfg:
 
   plan_arch_overwrites: {} # overwrite arguments of architecture
   plan_anchors_overwrites: {} # overwrite arguments of anchors
+
+debug:
+  num_cases_val: 10

@@ -95,10 +95,12 @@ def load_final_model(
         trainer_cfg=cfg["trainer_cfg"],
         plan=plan,
         )
+        
     state_dict = torch.load(path, map_location="cpu")["state_dict"]
     t = model.load_state_dict(state_dict)
     logger.info(f"Loaded {path} with {t}")
-    model.float()
+    # model.float()
+    model = model.to(torch.float32)
     model.eval()
     return [{"model": model, "rank": 0}]
 

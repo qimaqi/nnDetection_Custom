@@ -337,7 +337,7 @@ def proces_and_segm(data,f):
         pad_value = 170
 
         im[np.isnan(im)]=-2000
-        sliceim = lumTrans(im)  
+        sliceim = lumTrans(im)   #normalized to (0-1)*255
         
         sliceim = sliceim*dilatedMask+pad_value*(1-dilatedMask).astype('uint8')
         # sliceim = sliceim*dm1+pad_value*(1-dm1).astype('uint8') #dilate only one lung

@@ -125,7 +125,7 @@ class BoxEnsembler(BaseEnsembler):
             data_key=data_key,
             device=device,
             **kwargs,
-        )
+        ) # initialize the ensembler
 
     @classmethod
     def get_default_parameters(cls):

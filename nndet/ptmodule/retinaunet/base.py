@@ -1009,6 +1009,13 @@ class VideoMAEUNetModule(LightningBaseModuleSWA):
             if _key == "loss":
                 logger.info(f"Train loss reached: {mean_val:0.5f}")
             self.log(f"train_{_key}", mean_val, sync_dist=True)
+        
+        optimizer = self.trainer.optimizers[0]
+        current_lr = optimizer.param_groups[-1]["lr"]
+        # get the last -1 param group name
+        param_name = list(optimizer.param_groups[-1].keys())[-1]
+        print(f"Current learning rate: {current_lr} for {param_name}")
+
         return super().training_epoch_end(training_step_outputs)
 
     def validation_epoch_end(self, validation_step_outputs):
@@ -1102,7 +1109,9 @@ class VideoMAEUNetModule(LightningBaseModuleSWA):
             print("Freezing encoder")
             for name, param in self.model.named_parameters():
                 if "encoder" in name:
-                    param.requires_grad = False
+                    if 'decoder' not in name:
+                        print("setting encoder to requires grad False", name)
+                        param.requires_grad = False
 
             wd_groups = get_params_no_wd_on_norm_freeze(self, weight_decay=self.trainer_cfg['weight_decay'])
     
@@ -1114,8 +1123,16 @@ class VideoMAEUNetModule(LightningBaseModuleSWA):
                 momentum=0.9,
                 nesterov=True,
                 )
+            # optimizer = torch.optim.AdamW(
+            #     wd_groups,
+            #     self.trainer_cfg["initial_lr"],
+            #     weight_decay=self.trainer_cfg["weight_decay"],
+            #     betas=(0.9, 0.95),
+            #     )
+
             num_iterations = self.trainer_cfg["max_num_epochs"] * \
                 self.trainer_cfg["num_train_batches_per_epoch"]
+
             scheduler = LinearWarmupPolyLR(
                 optimizer=optimizer,
                 warm_iterations=self.trainer_cfg["warm_iterations"],
@@ -1477,7 +1494,7 @@ class VideoMAEUNetModule(LightningBaseModuleSWA):
     @classmethod
     def get_predictor(cls,
                       plan: Dict,
-                      models: Sequence[RetinaUNetModule],
+                      models: Sequence[VideoMAEUNetModule],
                       num_tta_transforms: int = None,
                       do_seg: bool = False,
                       **kwargs,
@@ -1487,8 +1504,13 @@ class VideoMAEUNetModule(LightningBaseModuleSWA):
         batch_size = plan["batch_size"]
         inferene_plan = plan.get("inference_plan", {})
         logger.info(f"Found inference plan: {inferene_plan} for prediction")
-        if num_tta_transforms is None:
-            num_tta_transforms = 8 if plan["network_dim"] == 3 else 4
+        logger.info("Using crop_size: ", crop_size)
+
+        
+        # if num_tta_transforms is None:
+        #     num_tta_transforms = 8 if plan["network_dim"] == 3 else 4
+
+        num_tta_transforms = 0 # no mirrow for mae 
 
         # setup
         tta_transforms, tta_inverse_transforms = \
@@ -1665,6 +1687,7 @@ class SwinUnetrUNetModule(LightningBaseModuleSWA):
 
         # if batch["data"].max() > 235:
         #     batch["data"] = batch["data"] / 255.0
+        # print("data_batch", batch["data"].shape, batch["data"].dtype, batch["data"].min(), batch["data"].max())
 
         losses, _ = self.model.train_step(
             images=batch["data"],
@@ -2212,7 +2235,7 @@ class SwinUnetrUNetModule(LightningBaseModuleSWA):
     @classmethod
     def get_predictor(cls,
                       plan: Dict,
-                      models: Sequence[RetinaUNetModule],
+                      models: Sequence[SwinUnetrUNetModule],
                       num_tta_transforms: int = None,
                       do_seg: bool = False,
                       **kwargs,
@@ -2259,6 +2282,7 @@ class SwinUnetrUNetModule(LightningBaseModuleSWA):
               train_data_dir: os.PathLike,
               case_ids: Sequence[str],
               run_prediction: bool = True,
+              debug: bool = False,
               **kwargs,
               ) -> Dict[str, Any]:
         """
@@ -2305,6 +2329,7 @@ class SwinUnetrUNetModule(LightningBaseModuleSWA):
                 case_ids=case_ids,
                 save_state=True,
                 model_fn=get_loader_fn(mode=self.trainer_cfg.get("sweep_ckpt", "last")),
+                debug=debug,
                 **kwargs,
                 )
 

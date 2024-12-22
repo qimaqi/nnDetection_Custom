@@ -222,11 +222,13 @@ def npz2npy(npz_file: str, delete_npz: bool = False, to_int=False):
         # print(a["seg"].dtype, a["seg"].min(), a["seg"].max())
         
         if to_int:
-            min_val = -2.1
-            max_val = 4.7
+            min_val = -2.32
+            max_val = 2.50
             assert a["data"].min() >= min_val, f"min value {a['data'].min()} is smaller than {min_val}"
             assert a["data"].max() <= max_val, f"max value {a['data'].max()} is larger than {max_val}"
-            
+
+            print("a",a["data"].dtype, a["data"].min(), a["data"].max())
+
             data = a["data"]
             seg = a["seg"]
             a["data"] = (((data- min_val) / (max_val - min_val)) * 255).astype(np.uint8)

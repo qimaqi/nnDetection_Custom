@@ -248,6 +248,7 @@ class Predictor:
                                 shuffle=False,
                                 collate_fn=slice_collate,
                                 )
+
         for model_idx, (model, model_weight) in enumerate(
             zip(self.models, self.model_weights)):
             logger.info(f"Predicting model {model_idx + 1} of "
@@ -308,6 +309,10 @@ class Predictor:
 
         if not self.ensemble_on_device:
             result = to_device(result, device="cpu")
+
+            
+        # print("result debug", result)
+        # raise ValueError('stop here')
 
         for ensembler in self.ensembler.values():
             ensembler.process_batch(result=result, batch=batch)

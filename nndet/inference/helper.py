@@ -38,6 +38,7 @@ def predict_dir(
     restore: bool = False,
     case_ids: Optional[Sequence[str]] = None,
     save_state: bool = False,
+    debug: bool = False,
     **kwargs
     ):
     """
@@ -82,6 +83,9 @@ def predict_dir(
         case_paths = [source_dir / f"{cid}.npz" for cid in case_ids]
     logger.info(f"Found {len(case_paths)} files for inference.")
 
+    if debug:
+        case_paths = case_paths[:4]
+
     for idx, path in enumerate(case_paths, start=1):
         logger.info(f"Predicting case {idx} of {len(case_paths)}.")
         case_id = get_case_id_from_path(str(path), remove_modality=False)
@@ -89,6 +93,7 @@ def predict_dir(
             case = np.load(str(path), allow_pickle=True)['data']
         else:
             case = np.load(str(path)[:-4] + ".npy", allow_pickle=True)
+
         properties = load_pickle(path.parent / f"{case_id}.pkl")
         properties["transpose_backward"] = plan["transpose_backward"]
 
@@ -96,19 +101,21 @@ def predict_dir(
         # map to 0 - 255 and back to 0 - 1
         # print("source_dir.name", str(source_dir), 'Luna' in str(source_dir))
         if 'Luna' in str(source_dir) and 'crop' not in str(source_dir):
-            min_val = -2.1
-            max_val = 4.7
-            assert case.min() >= min_val, f"min value {a['data'].min()} is smaller than {min_val}"
-            assert case.max() <= max_val, f"max value {a['data'].max()} is larger than {max_val}"
+            min_val = -2.32
+            max_val = 2.50
+            assert case.min() >= min_val, f"min value {['data'].min()} is smaller than {min_val}"
+            assert case.max() <= max_val, f"max value {['data'].max()} is larger than {max_val}"
             
-            case = (((case- min_val) / (max_val - min_val)))
+            case = ((((case- min_val) / (max_val - min_val))) * 255).astype(np.uint8)
+            case = case.astype(np.float32) / 255
             print("case min max", case.min(), case.max())
+        #     pass 
 
-        elif 'Luna' in str(source_dir) and 'crop' in str(source_dir):
-            raise NotImplementedError
+        # elif 'Luna' in str(source_dir) and 'crop' in str(source_dir):
+        #     raise NotImplementedError
 
-        else:
-            raise NotImplementedError
+        # else:
+        #     raise NotImplementedError
 
         
         if save_state:

@@ -25,7 +25,7 @@ from pytorch_lightning.callbacks import StochasticWeightAveraging
 from pytorch_lightning.trainer.optimizers import _get_default_scheduler_config
 from pytorch_lightning.utilities import rank_zero_warn
 
-from nndet.training.learning_rate import CycleLinear
+from nndet.training.learning_rate import CycleLinear, CycleCosine
 
 
 _AVG_FN = Callable[[torch.Tensor, torch.Tensor, torch.LongTensor], torch.FloatTensor]
@@ -119,6 +119,54 @@ class BaseSWA(StochasticWeightAveraging):
         """
         raise NotImplementedError
 
+class SWACycleCosine(BaseSWA):
+    def __init__(self,
+                 swa_epoch_start: int,
+                 cycle_initial_lr: float,
+                 cycle_final_lr: float,
+                 num_iterations_per_epoch: int,
+                 avg_fn: Optional[_AVG_FN] = None,
+                 device: Optional[Union[torch.device, str]] = torch.device("cpu"),
+                 update_statistics: Optional[bool] = None,
+                 ):
+        """
+        SWA based on :class:`CycleCosine`
+
+        Args:
+            swa_epoch_start: Epoch to start SWA weight saving.
+            cycle_initial_lr: initial learning rate of cycle
+            cycle_final_lr: final learning rate of cycle
+            num_iterations_per_epoch: number of train iterations per epoch
+            avg_fn: Function to average saved weights. Defaults to None.
+            device: Device to save averaged model. Defaults to 
+                torch.device("cpu").
+            update_statistics: Perform a final update of the normalization
+                layers. Defaults to None.
+        """
+        super().__init__(
+            swa_epoch_start=swa_epoch_start,
+            avg_fn=avg_fn,
+            device=device,
+            update_statistics=update_statistics,
+            )
+        self.cycle_initial_lr = cycle_initial_lr
+        self.cycle_final_lr = cycle_final_lr
+        self.num_iterations_per_epoch = num_iterations_per_epoch
+
+    def get_swa_scheduler(self, optimizer) -> Union[_LRScheduler, dict]:
+        print("========================================")
+        print("SWACycleCosine loaded")
+        print("========================================")
+        
+        return {
+            "scheduler": CycleCosine(
+                optimizer=optimizer,
+                cycle_num_iterations=self.num_iterations_per_epoch,
+                cycle_initial_lr=self.cycle_initial_lr,
+                cycle_final_lr=self.cycle_final_lr,
+                ),
+            "interval": "step",
+        }
 
 class SWACycleLinear(BaseSWA):
     def __init__(self,

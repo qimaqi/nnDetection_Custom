@@ -15,16 +15,22 @@ from nndet.core.boxes.ops_np import box_center_np
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
+    parser.add_argument('task', type=int, help="Number of task")
     parser.add_argument('model', type=str, help="Name of model")
     parser.add_argument('--shape', type=str, default="16_224_224", help="Shape of the input image")
     args = parser.parse_args()
     model = args.model
 
-    task_dir = Path(os.getenv("det_models")) / "Task016_Luna"
+    #task_dir = Path(os.getenv("det_models")) / "Task016_Luna"
+    #task_dir = Path(os.getenv("det_models")) / "Task017_Luna_liu_prep_int_16"
+    task_dir = Path(os.getenv("det_models")) / "Task018_Luna_liu_prep_int_64"
+
     model_dir = task_dir / model
     assert model_dir.is_dir()
-
-    raw_splitted_images = Path(os.getenv("det_data")) / "Task016_Luna" / "raw_splitted" / "imagesTr"
+    
+    # raw_splitted_images = Path(os.getenv("det_data")) / "Task016_Luna" / "raw_splitted" / "imagesTr"
+    #raw_splitted_images = Path(os.getenv("det_data")) / "Task017_Luna_liu_prep_int_16" / "raw_splitted" / "imagesTr"
+    raw_splitted_images = Path(os.getenv("det_data")) / "Task018_Luna_liu_prep_int_64" / "raw_splitted" / "imagesTr"
 
     prediction_dir = model_dir / args.shape  /"consolidated" / "val_predictions"
     # prediction_dir = model_dir / "fold0" / "val_predictions"

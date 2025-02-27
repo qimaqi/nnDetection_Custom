@@ -100,15 +100,28 @@ def predict_dir(
         # print("case min max", case.min(), case.max())
         # map to 0 - 255 and back to 0 - 1
         # print("source_dir.name", str(source_dir), 'Luna' in str(source_dir))
-        if 'Luna' in str(source_dir) and 'crop' not in str(source_dir):
-            min_val = -2.32
-            max_val = 2.50
-            assert case.min() >= min_val, f"min value {['data'].min()} is smaller than {min_val}"
-            assert case.max() <= max_val, f"max value {['data'].max()} is larger than {max_val}"
-            
-            case = ((((case- min_val) / (max_val - min_val))) * 255).astype(np.uint8)
-            case = case.astype(np.float32) / 255
-            print("case min max", case.min(), case.max())
+        if 'int' in str(source_dir):
+            if 'Luna' in str(source_dir) and 'nndet_prep' in str(source_dir):
+                print("using nndet prep code for test")
+                min_val = -2.1
+                max_val = 4.7
+                assert case.min() >= min_val, f"min value {['data'].min()} is smaller than {min_val}"
+                assert case.max() <= max_val, f"max value {['data'].max()} is larger than {max_val}"
+                
+                case = ((((case- min_val) / (max_val - min_val))) * 255).astype(np.uint8)
+                case = case.astype(np.float32) / 255
+                # print("case min max", case.min(), case.max())    
+
+            elif 'Luna' in str(source_dir) and 'liu_prep' in str(source_dir):
+                print("using Liu prep code for test")
+                min_val = -2.32
+                max_val = 2.50
+                assert case.min() >= min_val, f"min value {['data'].min()} is smaller than {min_val}"
+                assert case.max() <= max_val, f"max value {['data'].max()} is larger than {max_val}"
+                
+                case = ((((case- min_val) / (max_val - min_val))) * 255).astype(np.uint8)
+                case = case.astype(np.float32) / 255
+                # print("case min max", case.min(), case.max())
         #     pass 
 
         # elif 'Luna' in str(source_dir) and 'crop' in str(source_dir):
@@ -116,6 +129,9 @@ def predict_dir(
 
         # else:
         #     raise NotImplementedError
+        # nndet_prep, use int, better results than nndet_prep float 
+        # what about liu_prep ? 
+        
 
         
         if save_state:

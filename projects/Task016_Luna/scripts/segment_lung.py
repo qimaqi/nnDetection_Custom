@@ -340,10 +340,8 @@ def proces_and_segm(data,f):
         sliceim = lumTrans(im)   #normalized to (0-1)*255
         
         sliceim = sliceim*dilatedMask+pad_value*(1-dilatedMask).astype('uint8')
-        # sliceim = sliceim*dm1+pad_value*(1-dm1).astype('uint8') #dilate only one lung
         
-        bones = sliceim*extramask>bone_thresh
-        # bones = sliceim*extramask_1>bone_thresh #dilate only one lung
+        bones = sliceim*extramask>bone_thresh #apply bone thr
         sliceim[bones] = pad_value
         # sliceim1,_ = resample(sliceim,spacing,resolution,order=1)
         # sliceim2 = sliceim1[extendbox[0,0]:extendbox[0,1],

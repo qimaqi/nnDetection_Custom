@@ -43,8 +43,8 @@ echo "Time: $(date)"
 #For luna costum 16*224*224
 
 # nndet_unpack ${det_data}/Task017_Luna_crop/preprocessed/D3V001_3d/imagesTr 6 #dont need to unpack again when changing the size
-# nndet_train 017 -o exp.fold=1 train=v001 train.mode=resume +augment_cfg.patch_size=[16,224,224] +debug.num_cases_val=10 --sweep
+nndet_train 26 -o exp.fold=1 train=v001 +augment_cfg.patch_size=[16,224,224]  --sweep
 
 
-nndet_eval 017 RetinaUNetV001_D3V001_3d 1 --boxes --analyze_boxes --shape=16_224_224
+# nndet_eval 017 RetinaUNetV001_D3V001_3d 0 --boxes --analyze_boxes --shape=16_224_224
 

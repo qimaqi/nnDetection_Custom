@@ -1,6 +1,0 @@
-Job ID: 862719
-Time: Sun Dec 15 13:22:36 CET 2024
-2024-12-15 13:22:37.433 | INFO     | nndet.io.load:unpack_dataset:182 - Unpacking dataset
-2024-12-15 13:22:37.473 | INFO     | nndet.io.load:unpack_dataset:184 - Found 886 files to unpack
-2024-12-15 13:22:37.473 | INFO     | nndet.io.load:unpack_dataset:185 - Delete npz files after conversion: False
-2024-12-15 13:22:37.473 | INFO     | nndet.io.load:unpack_dataset:186 - Convert to int: False

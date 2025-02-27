@@ -80,13 +80,16 @@ class SwinUNETR_Encoder(nn.Module):
         spatial_dims: int = 3,
         downsample="merging",
         use_v2=False,
-        map_to_decoder_type: str = "conv",
+        map_to_decoder_type="conv",
+        skip_connection=True,
+
     ) -> None:
         super().__init__()
 
         img_size = ensure_tuple_rep(img_size, spatial_dims)
         patch_sizes = ensure_tuple_rep(self.patch_size, spatial_dims)
         window_size = ensure_tuple_rep(7, spatial_dims)
+        self.skip_connection = skip_connection
 
         print("window_size", window_size)
 
@@ -128,121 +131,233 @@ class SwinUNETR_Encoder(nn.Module):
             use_v2=use_v2,
         )
 
-        self.encoder1 = UnetrBasicBlock(
-            spatial_dims=spatial_dims,
-            in_channels=in_channels,
-            out_channels=feature_shapes[0][0],
-            kernel_size=3,
-            stride=1,
-            norm_name=norm_name,
-            res_block=True,
-        )
+        if skip_connection:
+            self.encoder1 = UnetrBasicBlock(
+                spatial_dims=spatial_dims,
+                in_channels=in_channels,
+                out_channels=feature_shapes[0][0],
+                kernel_size=3,
+                stride=1,
+                norm_name=norm_name,
+                res_block=True,
+            )
 
-        self.encoder2 = UnetrBasicBlock(
-            spatial_dims=spatial_dims,
-            in_channels=feature_size,
-            out_channels=feature_shapes[1][0],
-            kernel_size=3,
-            stride=1,
-            norm_name=norm_name,
-            res_block=True,
-        )
+            self.encoder2 = UnetrBasicBlock(
+                spatial_dims=spatial_dims,
+                in_channels=feature_size,
+                out_channels=feature_shapes[1][0],
+                kernel_size=3,
+                stride=1,
+                norm_name=norm_name,
+                res_block=True,
+            )
 
-        self.encoder3 = UnetrBasicBlock(
-            spatial_dims=spatial_dims,
-            in_channels=2 * feature_size,
-            out_channels= feature_shapes[2][0],
-            kernel_size=3,
-            stride=1,
-            norm_name=norm_name,
-            res_block=True,
-        )
+            self.encoder3 = UnetrBasicBlock(
+                spatial_dims=spatial_dims,
+                in_channels=2 * feature_size,
+                out_channels= feature_shapes[2][0],
+                kernel_size=3,
+                stride=1,
+                norm_name=norm_name,
+                res_block=True,
+            )
 
-        self.encoder4 = UnetrBasicBlock(
-            spatial_dims=spatial_dims,
-            in_channels=4 * feature_size,
-            out_channels=feature_shapes[3][0],
-            kernel_size=3,
-            stride=1,
-            norm_name=norm_name,
-            res_block=True,
-        )
+            self.encoder4 = UnetrBasicBlock(
+                spatial_dims=spatial_dims,
+                in_channels=4 * feature_size,
+                out_channels=feature_shapes[3][0],
+                kernel_size=3,
+                stride=1,
+                norm_name=norm_name,
+                res_block=True,
+            )
 
-        self.encoder5 = UnetrBasicBlock(
-            spatial_dims=spatial_dims,
-            in_channels=8 * feature_size,
-            out_channels=feature_shapes[4][0],
-            kernel_size=3,
-            stride=1,
-            norm_name=norm_name,
-            res_block=True,
-        )
+            self.encoder5 = UnetrBasicBlock(
+                spatial_dims=spatial_dims,
+                in_channels=8 * feature_size,
+                out_channels=feature_shapes[4][0],
+                kernel_size=3,
+                stride=1,
+                norm_name=norm_name,
+                res_block=True,
+            )
 
-        # self.encoder10 = UnetrBasicBlock(
-        #     spatial_dims=spatial_dims,
-        #     in_channels=16 * feature_size,
-        #     out_channels=320,
-        #     kernel_size=3,
-        #     stride=1,
-        #     norm_name=norm_name,
-        #     res_block=True,
-        # )
+            # self.encoder10 = UnetrBasicBlock(
+            #     spatial_dims=spatial_dims,
+            #     in_channels=16 * feature_size,
+            #     out_channels=320,
+            #     kernel_size=3,
+            #     stride=1,
+            #     norm_name=norm_name,
+            #     res_block=True,
+            # )
 
-        self.encoder6 = Decoder_Map(
-            in_planes = 16 * feature_size,
-            out_planes = feature_shapes[5][0],
-            input_size = np.array(img_size) // 2**5,
-            output_size=feature_shapes[5][1:]
-        )
+            self.encoder6 = Decoder_Map(
+                in_planes = 16 * feature_size,
+                out_planes = feature_shapes[5][0],
+                input_size = np.array(img_size) // 2**5,
+                output_size=feature_shapes[5][1:]
+            )
+        else:
+ 
+            self.encoder1 = UnetrBasicBlock(
+                spatial_dims=spatial_dims,
+                in_channels=in_channels,
+                out_channels=feature_shapes[0][0],
+                kernel_size=3,
+                stride=1,
+                norm_name=norm_name,
+                res_block=True,
+            )
+
+            self.encoder2 = Decoder_Map(
+                in_planes = 16 * feature_size,
+                out_planes=feature_shapes[1][0],
+                input_size = np.array(img_size) // 2**5,
+                output_size=feature_shapes[1][1:],
+                upsample_stage="gradually"
+            )
+
+            self.encoder3 = Decoder_Map(
+                in_planes = 16 * feature_size,
+                out_planes=feature_shapes[2][0],
+                input_size = np.array(img_size) // 2**5,
+                output_size=feature_shapes[2][1:],
+                upsample_stage="gradually"
+            )
+            # all feature from last layer
+            self.encoder4 = Decoder_Map(
+                in_planes = 16 * feature_size,
+                out_planes=feature_shapes[3][0],
+                input_size = np.array(img_size) // 2**5,
+                output_size=feature_shapes[3][1:],
+                upsample_stage="gradually"
+            )
+
+            self.encoder5 = Decoder_Map(
+                in_planes = 16*feature_size,
+                out_planes = feature_shapes[5][0],
+                input_size = np.array(img_size) // 2**5,
+                output_size=feature_shapes[4][1:],
+                upsample_stage="gradually"
+            )
+
+            self.encoder6 = Decoder_Map(
+                in_planes = 16 * feature_size,
+                out_planes = feature_shapes[5][0],
+                input_size = np.array(img_size) // 2**5,
+                output_size=feature_shapes[5][1:],
+                upsample_stage="gradually"
+            )
         
 
+    # def load_from(self, weights):
+    #     with torch.no_grad():
+    #         self.swinViT.patch_embed.proj.weight.copy_(weights["state_dict"]["swinViT.patch_embed.proj.weight"])
+    #         self.swinViT.patch_embed.proj.bias.copy_(weights["state_dict"]["swinViT.patch_embed.proj.bias"])
+    #         for bname, block in self.swinViT.layers1[0].blocks.named_children():
+    #             block.load_from(weights, n_block=bname, layer="layers1")
+    #         self.swinViT.layers1[0].downsample.reduction.weight.copy_(
+    #             weights["state_dict"]["swinViT.layers1.0.downsample.reduction.weight"]
+    #         )
+    #         self.swinViT.layers1[0].downsample.norm.weight.copy_(
+    #             weights["state_dict"]["swinViT.layers1.0.downsample.norm.weight"]
+    #         )
+    #         self.swinViT.layers1[0].downsample.norm.bias.copy_(
+    #             weights["state_dict"]["swinViT.layers1.0.downsample.norm.bias"]
+    #         )
+    #         for bname, block in self.swinViT.layers2[0].blocks.named_children():
+    #             block.load_from(weights, n_block=bname, layer="layers2")
+    #         self.swinViT.layers2[0].downsample.reduction.weight.copy_(
+    #             weights["state_dict"]["swinViT.layers2.0.downsample.reduction.weight"]
+    #         )
+    #         self.swinViT.layers2[0].downsample.norm.weight.copy_(
+    #             weights["state_dict"]["swinViT.layers2.0.downsample.norm.weight"]
+    #         )
+    #         self.swinViT.layers2[0].downsample.norm.bias.copy_(
+    #             weights["state_dict"]["swinViT.layers2.0.downsample.norm.bias"]
+    #         )
+    #         for bname, block in self.swinViT.layers3[0].blocks.named_children():
+    #             block.load_from(weights, n_block=bname, layer="layers3")
+    #         self.swinViT.layers3[0].downsample.reduction.weight.copy_(
+    #             weights["state_dict"]["swinViT.layers3.0.downsample.reduction.weight"]
+    #         )
+    #         self.swinViT.layers3[0].downsample.norm.weight.copy_(
+    #             weights["state_dict"]["swinViT.layers3.0.downsample.norm.weight"]
+    #         )
+    #         self.swinViT.layers3[0].downsample.norm.bias.copy_(
+    #             weights["state_dict"]["swinViT.layers3.0.downsample.norm.bias"]
+    #         )
+    #         for bname, block in self.swinViT.layers4[0].blocks.named_children():
+    #             block.load_from(weights, n_block=bname, layer="layers4")
+    #         self.swinViT.layers4[0].downsample.reduction.weight.copy_(
+    #             weights["state_dict"]["swinViT.layers4.0.downsample.reduction.weight"]
+    #         )
+    #         self.swinViT.layers4[0].downsample.norm.weight.copy_(
+    #             weights["state_dict"]["swinViT.layers4.0.downsample.norm.weight"]
+    #         )
+    #         self.swinViT.layers4[0].downsample.norm.bias.copy_(
+    #             weights["state_dict"]["swinViT.layers4.0.downsample.norm.bias"]
+    #         )
     def load_from(self, weights):
         with torch.no_grad():
-            self.swinViT.patch_embed.proj.weight.copy_(weights["state_dict"]["swinViT.patch_embed.proj.weight"])
-            self.swinViT.patch_embed.proj.bias.copy_(weights["state_dict"]["swinViT.patch_embed.proj.bias"])
+            # Check if the keys have the 'module.' prefix
+            prefix = "module." if any(k.startswith("module.") for k in weights["state_dict"].keys()) else ""
+
+            # Helper function to add prefix to keys
+            def get_key(key):
+                return f"{prefix}{key}"
+
+            # Load weights with or without the prefix
+            self.swinViT.patch_embed.proj.weight.copy_(weights["state_dict"][get_key("swinViT.patch_embed.proj.weight")])
+            self.swinViT.patch_embed.proj.bias.copy_(weights["state_dict"][get_key("swinViT.patch_embed.proj.bias")])
+
             for bname, block in self.swinViT.layers1[0].blocks.named_children():
                 block.load_from(weights, n_block=bname, layer="layers1")
             self.swinViT.layers1[0].downsample.reduction.weight.copy_(
-                weights["state_dict"]["swinViT.layers1.0.downsample.reduction.weight"]
+                weights["state_dict"][get_key("swinViT.layers1.0.downsample.reduction.weight")]
             )
             self.swinViT.layers1[0].downsample.norm.weight.copy_(
-                weights["state_dict"]["swinViT.layers1.0.downsample.norm.weight"]
+                weights["state_dict"][get_key("swinViT.layers1.0.downsample.norm.weight")]
             )
             self.swinViT.layers1[0].downsample.norm.bias.copy_(
-                weights["state_dict"]["swinViT.layers1.0.downsample.norm.bias"]
+                weights["state_dict"][get_key("swinViT.layers1.0.downsample.norm.bias")]
             )
+
             for bname, block in self.swinViT.layers2[0].blocks.named_children():
                 block.load_from(weights, n_block=bname, layer="layers2")
             self.swinViT.layers2[0].downsample.reduction.weight.copy_(
-                weights["state_dict"]["swinViT.layers2.0.downsample.reduction.weight"]
+                weights["state_dict"][get_key("swinViT.layers2.0.downsample.reduction.weight")]
             )
             self.swinViT.layers2[0].downsample.norm.weight.copy_(
-                weights["state_dict"]["swinViT.layers2.0.downsample.norm.weight"]
+                weights["state_dict"][get_key("swinViT.layers2.0.downsample.norm.weight")]
             )
             self.swinViT.layers2[0].downsample.norm.bias.copy_(
-                weights["state_dict"]["swinViT.layers2.0.downsample.norm.bias"]
+                weights["state_dict"][get_key("swinViT.layers2.0.downsample.norm.bias")]
             )
+
             for bname, block in self.swinViT.layers3[0].blocks.named_children():
                 block.load_from(weights, n_block=bname, layer="layers3")
             self.swinViT.layers3[0].downsample.reduction.weight.copy_(
-                weights["state_dict"]["swinViT.layers3.0.downsample.reduction.weight"]
+                weights["state_dict"][get_key("swinViT.layers3.0.downsample.reduction.weight")]
             )
             self.swinViT.layers3[0].downsample.norm.weight.copy_(
-                weights["state_dict"]["swinViT.layers3.0.downsample.norm.weight"]
+                weights["state_dict"][get_key("swinViT.layers3.0.downsample.norm.weight")]
             )
             self.swinViT.layers3[0].downsample.norm.bias.copy_(
-                weights["state_dict"]["swinViT.layers3.0.downsample.norm.bias"]
+                weights["state_dict"][get_key("swinViT.layers3.0.downsample.norm.bias")]
             )
+
             for bname, block in self.swinViT.layers4[0].blocks.named_children():
                 block.load_from(weights, n_block=bname, layer="layers4")
             self.swinViT.layers4[0].downsample.reduction.weight.copy_(
-                weights["state_dict"]["swinViT.layers4.0.downsample.reduction.weight"]
+                weights["state_dict"][get_key("swinViT.layers4.0.downsample.reduction.weight")]
             )
             self.swinViT.layers4[0].downsample.norm.weight.copy_(
-                weights["state_dict"]["swinViT.layers4.0.downsample.norm.weight"]
+                weights["state_dict"][get_key("swinViT.layers4.0.downsample.norm.weight")]
             )
             self.swinViT.layers4[0].downsample.norm.bias.copy_(
-                weights["state_dict"]["swinViT.layers4.0.downsample.norm.bias"]
+                weights["state_dict"][get_key("swinViT.layers4.0.downsample.norm.bias")]
             )
 
     @torch.jit.unused
@@ -260,12 +375,21 @@ class SwinUNETR_Encoder(nn.Module):
         if not torch.jit.is_scripting() and not torch.jit.is_tracing():
             self._check_input_size(x_in.shape[2:])
         hidden_states_out = self.swinViT(x_in, self.normalize)
-        enc0 = self.encoder1(x_in)
-        enc1 = self.encoder2(hidden_states_out[0])
-        enc2 = self.encoder3(hidden_states_out[1])
-        enc3 = self.encoder4(hidden_states_out[2])
-        enc4 = self.encoder5(hidden_states_out[3])
-        dec4 = self.encoder6(hidden_states_out[4])
+        if self.skip_connection:
+            enc0 = self.encoder1(x_in)
+            enc1 = self.encoder2(hidden_states_out[0])
+            enc2 = self.encoder3(hidden_states_out[1])
+            enc3 = self.encoder4(hidden_states_out[2])
+            enc4 = self.encoder5(hidden_states_out[3])
+            dec4 = self.encoder6(hidden_states_out[4])
+        else:
+            # print("noskip")
+            enc0 = self.encoder1(x_in) 
+            enc1 = self.encoder2(hidden_states_out[4])
+            enc2 = self.encoder3(hidden_states_out[4])
+            enc3 = self.encoder4(hidden_states_out[4])
+            enc4 = self.encoder5(hidden_states_out[4])
+            dec4 = self.encoder6(hidden_states_out[4])
         # enc0 torch.Size([1, 48, 64, 128, 128])
         # enc1 torch.Size([1, 48, 32, 64, 64])
         # enc2 torch.Size([1, 96, 16, 32, 32])
@@ -923,7 +1047,47 @@ class SwinTransformerBlock(nn.Module):
     def forward_part2(self, x):
         return self.drop_path(self.mlp(self.norm2(x)))
 
+    # def load_from(self, weights, n_block, layer):
+    #     root = f"swinViT.{layer}.0.blocks.{n_block}."
+    #     block_names = [
+    #         "norm1.weight",
+    #         "norm1.bias",
+    #         "attn.relative_position_bias_table",
+    #         "attn.relative_position_index",
+    #         "attn.qkv.weight",
+    #         "attn.qkv.bias",
+    #         "attn.proj.weight",
+    #         "attn.proj.bias",
+    #         "norm2.weight",
+    #         "norm2.bias",
+    #         "mlp.linear1.weight",
+    #         "mlp.linear1.bias",
+    #         "mlp.linear2.weight",
+    #         "mlp.linear2.bias",
+    #     ]
+    #     with torch.no_grad():
+    #         self.norm1.weight.copy_(weights["state_dict"][root + block_names[0]])
+    #         self.norm1.bias.copy_(weights["state_dict"][root + block_names[1]])
+    #         self.attn.relative_position_bias_table.copy_(weights["state_dict"][root + block_names[2]])
+    #         self.attn.relative_position_index.copy_(weights["state_dict"][root + block_names[3]])
+    #         self.attn.qkv.weight.copy_(weights["state_dict"][root + block_names[4]])
+    #         self.attn.qkv.bias.copy_(weights["state_dict"][root + block_names[5]])
+    #         self.attn.proj.weight.copy_(weights["state_dict"][root + block_names[6]])
+    #         self.attn.proj.bias.copy_(weights["state_dict"][root + block_names[7]])
+    #         self.norm2.weight.copy_(weights["state_dict"][root + block_names[8]])
+    #         self.norm2.bias.copy_(weights["state_dict"][root + block_names[9]])
+    #         self.mlp.linear1.weight.copy_(weights["state_dict"][root + block_names[10]])
+    #         self.mlp.linear1.bias.copy_(weights["state_dict"][root + block_names[11]])
+    #         self.mlp.linear2.weight.copy_(weights["state_dict"][root + block_names[12]])
+    #         self.mlp.linear2.bias.copy_(weights["state_dict"][root + block_names[13]])
     def load_from(self, weights, n_block, layer):
+        # Check if the keys have the 'module.' prefix
+        prefix = "module." if any(k.startswith("module.") for k in weights["state_dict"].keys()) else ""
+
+        # Helper function to add prefix to keys
+        def get_key(key):
+            return f"{prefix}{key}"
+
         root = f"swinViT.{layer}.0.blocks.{n_block}."
         block_names = [
             "norm1.weight",
@@ -942,20 +1106,20 @@ class SwinTransformerBlock(nn.Module):
             "mlp.linear2.bias",
         ]
         with torch.no_grad():
-            self.norm1.weight.copy_(weights["state_dict"][root + block_names[0]])
-            self.norm1.bias.copy_(weights["state_dict"][root + block_names[1]])
-            self.attn.relative_position_bias_table.copy_(weights["state_dict"][root + block_names[2]])
-            self.attn.relative_position_index.copy_(weights["state_dict"][root + block_names[3]])
-            self.attn.qkv.weight.copy_(weights["state_dict"][root + block_names[4]])
-            self.attn.qkv.bias.copy_(weights["state_dict"][root + block_names[5]])
-            self.attn.proj.weight.copy_(weights["state_dict"][root + block_names[6]])
-            self.attn.proj.bias.copy_(weights["state_dict"][root + block_names[7]])
-            self.norm2.weight.copy_(weights["state_dict"][root + block_names[8]])
-            self.norm2.bias.copy_(weights["state_dict"][root + block_names[9]])
-            self.mlp.linear1.weight.copy_(weights["state_dict"][root + block_names[10]])
-            self.mlp.linear1.bias.copy_(weights["state_dict"][root + block_names[11]])
-            self.mlp.linear2.weight.copy_(weights["state_dict"][root + block_names[12]])
-            self.mlp.linear2.bias.copy_(weights["state_dict"][root + block_names[13]])
+            self.norm1.weight.copy_(weights["state_dict"][get_key(root + block_names[0])])
+            self.norm1.bias.copy_(weights["state_dict"][get_key(root + block_names[1])])
+            self.attn.relative_position_bias_table.copy_(weights["state_dict"][get_key(root + block_names[2])])
+            self.attn.relative_position_index.copy_(weights["state_dict"][get_key(root + block_names[3])])
+            self.attn.qkv.weight.copy_(weights["state_dict"][get_key(root + block_names[4])])
+            self.attn.qkv.bias.copy_(weights["state_dict"][get_key(root + block_names[5])])
+            self.attn.proj.weight.copy_(weights["state_dict"][get_key(root + block_names[6])])
+            self.attn.proj.bias.copy_(weights["state_dict"][get_key(root + block_names[7])])
+            self.norm2.weight.copy_(weights["state_dict"][get_key(root + block_names[8])])
+            self.norm2.bias.copy_(weights["state_dict"][get_key(root + block_names[9])])
+            self.mlp.linear1.weight.copy_(weights["state_dict"][get_key(root + block_names[10])])
+            self.mlp.linear1.bias.copy_(weights["state_dict"][get_key(root + block_names[11])])
+            self.mlp.linear2.weight.copy_(weights["state_dict"][get_key(root + block_names[12])])
+            self.mlp.linear2.bias.copy_(weights["state_dict"][get_key(root + block_names[13])])
 
     def forward(self, x, mask_matrix):
         shortcut = x

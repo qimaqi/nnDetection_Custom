@@ -183,7 +183,26 @@ class Encoder(AbstractEncoder):
         # x after torch.Size([4, 320, 4, 4, 4])
         # print("input shape", x.shape)
         #  [(32, 64, 128, 128), (64, 32, 64, 64), (128, 16, 32, 32), (256, 8, 16, 16), (320, 4, 8, 8), (320, 4, 4, 4)]
-        # 
+        
+
+        # for 96x192x192 input:
+        # x before torch.Size([4, 1, 96, 192, 192])
+        # x after torch.Size([4, 32, 96, 192, 192])
+        # stage 1
+        # x before torch.Size([4, 32, 96, 192, 192])
+        # x after torch.Size([4, 64, 48, 96, 96])
+        # stage 2
+        # x before torch.Size([4, 64, 48, 96, 96])
+        # x after torch.Size([4, 128, 24, 48, 48])
+        # stage 3
+        # x before torch.Size([4, 128, 24, 48, 48])
+        # x after torch.Size([4, 256, 12, 24, 24])
+        # stage 4
+        # x before torch.Size([4, 256, 12, 24, 24])
+        # x after torch.Size([4, 320, 6, 12, 12])
+        # stage 5
+        # x before torch.Size([4, 320, 6, 12, 12])
+        # x after torch.Size([4, 320, 6, 6, 6])
         for stage_id, module in enumerate(self.stages):
             # print("stage", stage_id)
             # print("x before", x.shape)
@@ -306,6 +325,10 @@ class VideoMAEEncoder(AbstractEncoder):
             upsample_func=encoder_cfg["upsample_func"],
             upsample_stage=encoder_cfg["upsample_stage"],
             skip_connection=encoder_cfg["skip_connection"],
+            use_lora=encoder_cfg.get("use_lora",0),
+            drop=encoder_cfg.get("drop", 0),
+            attn_drop=encoder_cfg.get("attn_drop", 0),
+            drop_path=encoder_cfg.get("drop_path", 0),
         )
 
         if encoder_cfg['pretrained_path'] is not None and os.path.exists(encoder_cfg['pretrained_path']):
@@ -473,6 +496,7 @@ class SwinUnetrEncoder(AbstractEncoder):
             feature_size=encoder_cfg["feature_size"],
             map_to_decoder_type=encoder_cfg["map_to_decoder_type"],
             feature_shapes=feature_shapes,
+            skip_connection=encoder_cfg["skip_connection"],
         )
 
         if encoder_cfg['pretrained_path'] is not None:

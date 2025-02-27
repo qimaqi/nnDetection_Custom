@@ -1,11 +1,11 @@
 #!/bin/bash
 #SBATCH --job-name=luna_crop_s0
-#SBATCH --output=sbatch_log/luna_crop_swin_64_s0_%j.out
+#SBATCH --output=sbatch_log/luna_crop_swin_64_int_joint_s0_%j.out
 #SBATCH --nodes=1
 #SBATCH --time=48:00:00
 #SBATCH --gres=gpu:1
 
-#SBATCH --nodelist=octopus01
+#SBATCH --nodelist=octopus02
 #SBATCH --cpus-per-task=4
 #SBATCH --mem 128GB
 #SBATCH --mail-type=BEGIN,END,FAIL
@@ -21,8 +21,10 @@
 # srun  --cpus-per-task=4 --mem 32GB --time 120 --gres=gpu:1 --nodelist=bmicgpu06 --pty bash -i 
 
 
+# source /usr/bmicnas02/data-biwi-01/lung_detection/miniconda3/etc/profile.d/conda.sh
 source /usr/bmicnas02/data-biwi-01/lung_detection/miniconda3/etc/profile.d/conda.sh
-conda activate nndet_swin
+
+conda activate nndet_venv
 
 export CUDA_HOME=$CONDA_PREFIX
 export PATH=$CUDA_HOME/bin:$PATH
@@ -45,7 +47,10 @@ echo "Time: $(date)"
 
 # nndet_unpack ${det_data}/Task017_Luna_crop/preprocessed/D3V001_3d/imagesTr 6
 
-nndet_train 018 -o exp.fold=0 train=swinunetr train.mode=resume +augment_cfg.patch_size=[64,128,128]  trainer_cfg.gradient_clip_val=0  trainer_cfg.max_num_epochs=60 trainer_cfg.swa_epochs=0 trainer_cfg.warm_iterations=4000  trainer_cfg.gradient_clip_val=0 trainer_cfg.amp_backend=None trainer_cfg.precision=32 trainer_cfg.amp_level=None --sweep
+# nndet_train 018 -o exp.fold=0 train=swinunetr train.mode=resume +augment_cfg.patch_size=[64,128,128]  trainer_cfg.gradient_clip_val=0  trainer_cfg.max_num_epochs=60 trainer_cfg.swa_epochs=0 trainer_cfg.warm_iterations=4000  trainer_cfg.gradient_clip_val=0 trainer_cfg.amp_backend=None trainer_cfg.precision=32 trainer_cfg.amp_level=None --sweep
+
+
+nndet_train 027 -o exp.fold=0 train=swinunetr train.mode=resume +trainer_cfg.freeze_encoder=True +augment_cfg.patch_size=[64,128,128]  trainer_cfg.gradient_clip_val=0  trainer_cfg.max_num_epochs=60 trainer_cfg.swa_epochs=0 trainer_cfg.warm_iterations=4000  trainer_cfg.gradient_clip_val=0 trainer_cfg.amp_backend=None trainer_cfg.precision=32 trainer_cfg.amp_level=None --sweep
 
 
 
@@ -84,4 +89,4 @@ nndet_train 018 -o exp.fold=0 train=swinunetr train.mode=resume +augment_cfg.pat
 
 #  [--overwrites] [--consolidate] [--num_folds] [--no_model] [--sweep_boxes] [--sweep_instances]
 
-#baseline16x224_submit0.sh
+#swinunetr_64x128_s0.sh

@@ -2,12 +2,18 @@ import pickle
 import numpy as np
 import json
 
-file = '/usr/bmicnas02/data-biwi-01/lung_detection/nnDet_models/Task017_Luna_crop/RetinaUNetV001_D3V001_3d/16_224_224/fold1/plan_inference.pkl'
+# file = '/usr/bmicnas02/data-biwi-01/lung_detection/nnDet_data/Task019_Luna_liu_prep_int_96/preprocessed/D3V001_3d.pkl'
+# '/usr/bmicnas02/data-biwi-01/lung_detection/nnDet_models/Task017_Luna_crop/RetinaUNetV001_D3V001_3d/16_224_224/fold1/plan_inference.pkl'
 # '/usr/bmicnas02/data-biwi-01/lung_detection/nnDet_models/Task017_Luna_crop/RetinaUNetV001_D3V001_3d/16_224_224/fold0/plan_inference.pkl'
 # '/usr/bmicnas02/data-biwi-01/lung_detection/nnDet_models/Task020_Luna_16_pre/VideoMAEUNetV001_D3V001_3d/16_224_224/fold1/plan_inference.pkl'
 
+# file ='/usr/bmicnas02/data-biwi-01/lung_detection/nnDet_models/Task023_Luna_liu_prep_int_16_pretrain_freeze/VideoMAEUNetV001_D3V001_3d/16_224_224/fold0/plan_inference.pkl'
+#file = '/usr/bmicnas02/data-biwi-01/lung_detection/nnDet_models/Task017_Luna_liu_prep_int_16/RetinaUNetV001_D3V001_3d/16_224_224/fold0/plan_inference.pkl'
+#file = '/usr/bmicnas02/data-biwi-01/lung_detection/nnDet_models/Task017_Luna_liu_prep_int_16/final_official_VideoMAEUNetV001_D3V001_3d/16_224_224/fold0/plan_inference.pkl' #facebook 19
+#file = '/usr/bmicnas02/data-biwi-01/lung_detection/nnDet_models/Task020_Luna_liu_prep_int_16_pretrain/cropped_at_epoch19_VideoMAEUNetV001_D3V001_3d/16_224_224/fold0/plan_inference.pkl' #pretrain 19
+# file = '/usr/bmicnas02/data-biwi-01/lung_detection/nnDet_models/Task017_Luna_liu_prep_int_16/VideoMAEUNetV001_D3V001_3d/16_224_224/fold0/plan_inference.pkl' #facebook 19
 
-
+file = "/usr/bmicnas02/data-biwi-01/lung_detection/nnDet_models/Task020_Luna_liu_prep_int_16_pretrain/official_finished_version1_VideoMAEUNetV001_D3V001_3d/16_224_224/fold0/plan_inference.pkl"
 with open(file, 'rb') as f:
     data = pickle.load(f)
 

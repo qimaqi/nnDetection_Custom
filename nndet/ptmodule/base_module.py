@@ -199,15 +199,38 @@ class LightningBaseModuleSWA(LightningBaseModule):
         return self.trainer_cfg["max_num_epochs"] + self.trainer_cfg["swa_epochs"]
 
     def configure_callbacks(self):
-        from nndet.training.swa import SWACycleLinear
+        # from nndet.training.swa import SWACycleLinear
+
+        # callbacks = []
+        # callbacks.append(
+        #     SWACycleLinear(
+        #         swa_epoch_start=self.trainer_cfg["max_num_epochs"],
+        #         cycle_initial_lr=self.trainer_cfg["initial_lr"] / 10.,
+        #         cycle_final_lr=self.trainer_cfg["initial_lr"] / 1000.,
+        #         num_iterations_per_epoch=self.trainer_cfg["num_train_batches_per_epoch"],
+        #         )
+        #     )
+    
+        from nndet.training.swa import SWACycleLinear, SWACycleCosine
 
         callbacks = []
-        callbacks.append(
-            SWACycleLinear(
-                swa_epoch_start=self.trainer_cfg["max_num_epochs"],
-                cycle_initial_lr=self.trainer_cfg["initial_lr"] / 10.,
-                cycle_final_lr=self.trainer_cfg["initial_lr"] / 1000.,
-                num_iterations_per_epoch=self.trainer_cfg["num_train_batches_per_epoch"],
+        swa_scheduler_type = self.trainer_cfg.get("swa_scheduler", "linear")  # Default to linear
+        if swa_scheduler_type == "cosine":
+            callbacks.append(
+                SWACycleCosine(
+                    swa_epoch_start=self.trainer_cfg["max_num_epochs"],
+                    cycle_initial_lr=self.trainer_cfg["initial_lr"] / 10.,
+                    cycle_final_lr=self.trainer_cfg["initial_lr"] / 1000.,
+                    num_iterations_per_epoch=self.trainer_cfg["num_train_batches_per_epoch"],
+                )
+            )
+        else:
+            callbacks.append(
+                SWACycleLinear(
+                    swa_epoch_start=self.trainer_cfg["max_num_epochs"],
+                    cycle_initial_lr=self.trainer_cfg["initial_lr"] / 10.,
+                    cycle_final_lr=self.trainer_cfg["initial_lr"] / 1000.,
+                    num_iterations_per_epoch=self.trainer_cfg["num_train_batches_per_epoch"],
                 )
             )
         return callbacks

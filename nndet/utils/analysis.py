@@ -150,11 +150,11 @@ def collect_overview(prediction_dir: Path, gt_dir: Path,
 
 
 def collect_score_iou(prediction_dir: Path, gt_dir: Path, iou: float, score: float):
-    all_pred = []
-    all_target = []
+    all_pred = [] #predicted labels
+    all_target = [] #gt labels corresponding to the predictions
 
-    all_pred_ious = []
-    all_pred_scores = []
+    all_pred_ious = [] #iou values for each prediction
+    all_pred_scores = [] #predicted scores
 
     for f in prediction_dir.glob("*_boxes.pkl"):
         case_id = f.stem.rsplit('_', 1)[0]
@@ -173,24 +173,35 @@ def collect_score_iou(prediction_dir: Path, gt_dir: Path, iou: float, score: flo
         pred_boxes, pred_scores, pred_labels = pred_boxes[keep], pred_scores[keep], pred_labels[keep]
 
         # computation starts here
-        if gt_boxes.size == 0:
-            all_pred.append(pred_labels)
-            all_target.append(np.ones(len(pred_labels)) * -1)
+        if gt_boxes.size == 0: 
+            #if no gt boxes, all cases are considered false positives
+            all_pred.append(pred_labels) 
+            #pred_labels added to all_pred
+            all_target.append(np.ones(len(pred_labels)) * -1) 
+            # -1 added to all_target
 
             all_pred_ious.append(np.zeros(len(pred_labels)))
             all_pred_scores.append(pred_scores)
-        elif pred_boxes.size == 0:
-            all_pred.append(np.ones(len(gt_classes)) * -1)
-            all_target.append(gt_classes)
-        else:
-            match_quality_matrix = box_iou_np(gt_boxes, pred_boxes)
+        elif pred_boxes.size == 0: 
+            #if no predictions, all cases are considered false negatives
+            all_pred.append(np.ones(len(gt_classes)) * -1) 
+            # predictions are marked as -1
+            all_target.append(gt_classes) 
+            #gt_classes added to all_target
+        else: #when both predictions and gt exist
+            match_quality_matrix = box_iou_np(gt_boxes, pred_boxes) #compute the iou matrix
 
-            matched_idxs = np.argmax(match_quality_matrix, axis=0)
-            matched_vals = np.max(match_quality_matrix, axis=0)
-            matched_idxs[matched_vals < iou] = -1
+            #Match predictions to ground truth based on the highest IoU values
+            matched_idxs = np.argmax(match_quality_matrix, axis=0) 
+            #Index of the ground truth box for each prediction.
+            matched_vals = np.max(match_quality_matrix, axis=0) 
+            #IoU values of the matches.
+            matched_idxs[matched_vals < iou] = -1 
+            #Predictions with IoU below the threshold (iou) are marked as unmatched (-1).
 
             matched_gt_boxes_per_image = gt_boxes[matched_idxs.clip(min=0)]
             target_labels = gt_classes[matched_idxs.clip(min=0)]
+            #Assign the ground truth labels to the predictions
             target_labels[matched_idxs == -1] = -1
 
             all_pred.append(pred_labels)
@@ -211,7 +222,7 @@ def plot_confusion_matrix(all_pred, all_target, iou: float, score:float):
     if len(all_pred) > 0 and len(all_target) > 0:
         cm = confusion_matrix(np.concatenate(all_target), np.concatenate(all_pred))
         plt.figure()
-        ax = sns.heatmap(cm, annot=True, cbar=False)
+        ax = sns.heatmap(cm, annot=True, cbar=False, fmt='g')
         ax.set_xlabel("Prediction")
         ax.set_ylabel("Ground Truth")
         ax.set_title(f"Confusion Matrix IoU {iou} and Score Threshold {score}")

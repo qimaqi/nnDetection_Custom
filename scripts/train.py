@@ -25,7 +25,7 @@ from typing import List
 
 import torch
 import pytorch_lightning as pl
-from pytorch_lightning.loggers import MLFlowLogger
+from pytorch_lightning.loggers import MLFlowLogger, TensorBoardLogger
 from pytorch_lightning.callbacks import ModelCheckpoint, LearningRateMonitor
 
 from loguru import logger
@@ -196,16 +196,20 @@ def _train(
 
     train_dir = init_train_dir(cfg)
 
-    pl_logger = MLFlowLogger(
-        experiment_name=cfg["task"],
-        tags={
-            "host": socket.gethostname(),
-            "fold": cfg["exp"]["fold"],
-            "task": cfg["task"],
-            "job_id": os.getenv('LSB_JOBID', 'no_id'),
-            "mlflow.runName": cfg["exp"]["id"],
-            },
-        save_dir=os.getenv("MLFLOW_TRACKING_URI", "./mlruns"),
+    # pl_logger = MLFlowLogger(
+    #     experiment_name=cfg["task"],
+    #     tags={
+    #         "host": socket.gethostname(),
+    #         "fold": cfg["exp"]["fold"],
+    #         "task": cfg["task"],
+    #         "job_id": os.getenv('LSB_JOBID', 'no_id'),
+    #         "mlflow.runName": cfg["exp"]["id"],
+    #         },
+    #     save_dir=os.getenv("MLFLOW_TRACKING_URI", "./mlruns"),
+    # )
+    pl_logger = TensorBoardLogger(
+        name=cfg["task"],
+        save_dir=os.getenv("MLFLOW_TRACKING_URI", "./tf_logs"),
     )
     pl_logger.log_hyperparams(flatten_mapping(
         {"model": OmegaConf.to_container(cfg["model_cfg"], resolve=True)}))
@@ -259,9 +263,19 @@ def _train(
         save_top_k=1,
         monitor=cfg["trainer_cfg"]["monitor_key"],
         mode=cfg["trainer_cfg"]["monitor_mode"],
+        #every_n_epochs=10,
     )
     checkpoint_cb.CHECKPOINT_NAME_LAST = 'model_last'
     callbacks.append(checkpoint_cb)
+
+    checkpoint_every_10_epochs = ModelCheckpoint(
+        dirpath=train_dir,
+        filename="checkpoint-{epoch:02d}",        # Save checkpoints with epoch number
+        save_top_k=-1,                            # Save all checkpoints every 10 epochs
+        every_n_epochs=10,                        # Save every 10 epochs
+    )
+    callbacks.append(checkpoint_every_10_epochs)
+
     callbacks.append(LearningRateMonitor(logging_interval="epoch"))
 
     OmegaConf.save(cfg, str(Path(os.getcwd()) / "config.yaml"))
@@ -479,6 +493,9 @@ def _evaluate(
     task = get_task(task, name=True)
     model_dir = Path(os.getenv("det_models")) / task / model
     training_dir = get_training_dir(model_dir, fold, shape)
+
+    print("====================================")
+    print("training_dir", training_dir)
 
     data_dir_task = Path(os.getenv("det_data")) / task
     data_cfg = load_dataset_info(data_dir_task)

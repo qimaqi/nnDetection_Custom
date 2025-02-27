@@ -63,7 +63,7 @@ from nndet.inference.loading import get_loader_fn
 from nndet.inference.helper import predict_dir
 from nndet.inference.ensembler.segmentation import SegmentationEnsembler
 from nndet.inference.ensembler.detection import BoxEnsemblerSelective
-
+import transformers
 from nndet.io.transforms import (
     Compose,
     Instances2Boxes,
@@ -326,7 +326,7 @@ class RetinaUNetModule(LightningBaseModuleSWA):
         # if seperate the learning rate in encder and decoder
         optimizer = torch.optim.SGD(
             wd_groups,
-            self.trainer_cfg["initial_lr"],
+            lr=self.trainer_cfg["initial_lr"],
             weight_decay=self.trainer_cfg["weight_decay"],
             momentum=self.trainer_cfg["sgd_momentum"],
             nesterov=self.trainer_cfg["sgd_nesterov"],
@@ -1012,9 +1012,9 @@ class VideoMAEUNetModule(LightningBaseModuleSWA):
         
         optimizer = self.trainer.optimizers[0]
         current_lr = optimizer.param_groups[-1]["lr"]
+        current_lr_0 = optimizer.param_groups[0]["lr"]
         # get the last -1 param group name
-        param_name = list(optimizer.param_groups[-1].keys())[-1]
-        print(f"Current learning rate: {current_lr} for {param_name}")
+        print(f"Current learning rate: {current_lr_0}  and {current_lr}")
 
         return super().training_epoch_end(training_step_outputs)
 
@@ -1072,32 +1072,64 @@ class VideoMAEUNetModule(LightningBaseModuleSWA):
                     f"nesterov {self.trainer_cfg['sgd_nesterov']}")
         
         if not self.trainer_cfg["freeze_encoder"]:
-            if self.trainer_cfg["seperate_lr"]:
-                wd_groups = get_params_no_wd_on_norm_seperate_lr(self, weight_decay=self.trainer_cfg['weight_decay'],lr_encoder= self.trainer_cfg["initial_lr"], lr_other= self.trainer_cfg["initial_lr"]*10)
+            if self.trainer_cfg["decoder_lr"]:
+                wd_groups = get_params_no_wd_on_norm_seperate_lr(self, weight_decay=self.trainer_cfg['weight_decay'],lr_encoder= self.trainer_cfg["initial_lr"], lr_other= self.trainer_cfg["decoder_lr"]*10)
 
-                optimizer = torch.optim.AdamW(
-                    wd_groups,
-                    weight_decay=self.trainer_cfg["weight_decay"],
-                    betas=(0.9, 0.95),
-                    )
+                if self.trainer_cfg["optimizer"]=="adamw":
+                    optimizer = torch.optim.AdamW(
+                        wd_groups,
+                        weight_decay=self.trainer_cfg["weight_decay"],
+                        betas=(0.9, 0.95),
+                        )
+                else:
+                    optimizer = torch.optim.SGD(
+                        wd_groups,
+                        lr=self.trainer_cfg["initial_lr"],
+                        weight_decay=self.trainer_cfg["weight_decay"],
+                        momentum=self.trainer_cfg["sgd_momentum"],
+                        nesterov=self.trainer_cfg["sgd_nesterov"]
+                        )
+                print(f"Using optimizer: {optimizer}")
                 
             else:
                 wd_groups = get_params_no_wd_on_norm(self, weight_decay=self.trainer_cfg['weight_decay'])
 
-                optimizer = torch.optim.AdamW(
-                    wd_groups,
-                    self.trainer_cfg["initial_lr"],
-                    weight_decay=self.trainer_cfg["weight_decay"],
-                    betas=(0.9, 0.95),
-                    )
-                
+                # optimizer = torch.optim.AdamW(
+                #     wd_groups,
+                #     self.trainer_cfg["initial_lr"],
+                #     weight_decay=self.trainer_cfg["weight_decay"],
+                #     betas=(0.9, 0.95),
+                #     )
+                if self.trainer_cfg["optimizer"]=="adamw":
+                    optimizer = torch.optim.AdamW(
+                        wd_groups,
+                        weight_decay=self.trainer_cfg["weight_decay"],
+                        betas=(0.9, 0.95),
+                        )
+                else:
+                    optimizer = torch.optim.SGD(
+                        wd_groups,
+                        lr=self.trainer_cfg["initial_lr"],
+                        weight_decay=self.trainer_cfg["weight_decay"],
+                        momentum=self.trainer_cfg["sgd_momentum"],
+                        nesterov=self.trainer_cfg["sgd_nesterov"]
+                        )
+                print(f"Using optimizer: {optimizer}")
 
             num_iterations = self.trainer_cfg["max_num_epochs"] * \
                 self.trainer_cfg["num_train_batches_per_epoch"]
             
-            # import transformers
-            # scheduler = transformers.get_cosine_schedule_with_warmup(optimizer=optimizer,num_warmup_steps=self.trainer_cfg["warm_iterations"], num_training_steps=num_iterations) 
-            scheduler = LinearWarmupPolyLR(
+
+            if self.trainer_cfg.get("scheduler","cosine")=="cosine": #for when there is no scheduler in the config
+                print("Using cosine scheduler")
+                scheduler = transformers.get_cosine_schedule_with_warmup(
+                    optimizer=optimizer,
+                    num_warmup_steps=self.trainer_cfg["warm_iterations"], 
+                    num_training_steps=num_iterations,
+                    ) 
+            elif self.trainer_cfg.get("scheduler","cosine")=="poly":
+                print("Using poly scheduler")
+                scheduler = LinearWarmupPolyLR(
                 optimizer=optimizer,
                 warm_iterations=self.trainer_cfg["warm_iterations"],
                 warm_lr=self.trainer_cfg["warm_lr"],
@@ -1113,33 +1145,43 @@ class VideoMAEUNetModule(LightningBaseModuleSWA):
                         print("setting encoder to requires grad False", name)
                         param.requires_grad = False
 
-            wd_groups = get_params_no_wd_on_norm_freeze(self, weight_decay=self.trainer_cfg['weight_decay'])
+            wd_groups = get_params_no_wd_on_norm_freeze(self, weight_decay=self.trainer_cfg['weight_decay'], lr_encoder=self.trainer_cfg['initial_lr'], lr_other=self.trainer_cfg['decoder_lr'] if self.trainer_cfg["decoder_lr"] else self.trainer_cfg['initial_lr'])
     
             # if seperate the learning rate in encder and decoder
-            optimizer = torch.optim.SGD(
-                wd_groups,
-                1e-2,
-                weight_decay=3e-5,
-                momentum=0.9,
-                nesterov=True,
-                )
-            # optimizer = torch.optim.AdamW(
+            # optimizer = torch.optim.SGD(
             #     wd_groups,
-            #     self.trainer_cfg["initial_lr"],
-            #     weight_decay=self.trainer_cfg["weight_decay"],
-            #     betas=(0.9, 0.95),
+            #     1e-2,
+            #     weight_decay=3e-5,
+            #     momentum=0.9,
+            #     nesterov=True,
             #     )
+            optimizer = torch.optim.AdamW(
+                wd_groups,
+                self.trainer_cfg["initial_lr"],
+                weight_decay=self.trainer_cfg["weight_decay"],
+                betas=(0.9, 0.95),
+                )
 
             num_iterations = self.trainer_cfg["max_num_epochs"] * \
                 self.trainer_cfg["num_train_batches_per_epoch"]
 
-            scheduler = LinearWarmupPolyLR(
+            if self.trainer_cfg.get("scheduler","cosine")=="cosine": #for when there is no scheduler in the config
+                print("Using cosine scheduler")
+                scheduler = transformers.get_cosine_schedule_with_warmup(
+                        optimizer=optimizer,
+                        num_warmup_steps=self.trainer_cfg["warm_iterations"], 
+                        num_training_steps=num_iterations,
+                        ) 
+            elif self.trainer_cfg.get("scheduler","cosine")=="poly":
+                print("Using poly scheduler")
+                scheduler = LinearWarmupPolyLR(
                 optimizer=optimizer,
                 warm_iterations=self.trainer_cfg["warm_iterations"],
-                warm_lr=1e-6,
-                poly_gamma=0.9,
+                warm_lr=self.trainer_cfg["warm_lr"],
+                poly_gamma=self.trainer_cfg["poly_gamma"],
                 num_iterations=num_iterations
-            )  
+            )
+            
 
         return [optimizer], {'scheduler': scheduler, 'interval': 'step'}
 
@@ -1507,10 +1549,10 @@ class VideoMAEUNetModule(LightningBaseModuleSWA):
         logger.info("Using crop_size: ", crop_size)
 
         
-        # if num_tta_transforms is None:
-        #     num_tta_transforms = 8 if plan["network_dim"] == 3 else 4
+        if num_tta_transforms is None:
+            num_tta_transforms = 8 if plan["network_dim"] == 3 else 4
 
-        num_tta_transforms = 0 # no mirrow for mae 
+        # num_tta_transforms = 0 # no mirrow for mae 
 
         # setup
         tta_transforms, tta_inverse_transforms = \
@@ -1840,6 +1882,50 @@ class SwinUnetrUNetModule(LightningBaseModuleSWA):
         for key, item in metric_scores.items():
             self.log(f'{key}', item, on_step=None, on_epoch=True, prog_bar=False, logger=True)
 
+    # def configure_optimizers(self):
+    #     """
+    #     Configure optimizer and scheduler
+    #     Base configuration is SGD with LinearWarmup and PolyLR learning rate
+    #     schedule
+    #     """
+    #     # configure optimizer
+    #     logger.info(f"Running: initial_lr {self.trainer_cfg['initial_lr']} "
+    #                 f"weight_decay {self.trainer_cfg['weight_decay']} "
+    #                 f"SGD with momentum {self.trainer_cfg['sgd_momentum']} and "
+    #                 f"nesterov {self.trainer_cfg['sgd_nesterov']}")
+        
+    #     if self.trainer_cfg["seperate_lr"]:
+    #         wd_groups = get_params_no_wd_on_norm_seperate_lr(self, weight_decay=self.trainer_cfg['weight_decay'],lr_encoder= self.trainer_cfg["initial_lr"], lr_other= self.trainer_cfg["initial_lr"]*10)
+
+    #         optimizer = torch.optim.AdamW(
+    #             wd_groups,
+    #             weight_decay=self.trainer_cfg["weight_decay"],
+    #             betas=(0.9, 0.95),
+    #             )
+            
+    #     else:
+    #         wd_groups = get_params_no_wd_on_norm(self, weight_decay=self.trainer_cfg['weight_decay'])
+
+    #         optimizer = torch.optim.AdamW(
+    #             wd_groups,
+    #             self.trainer_cfg["initial_lr"],
+    #             weight_decay=self.trainer_cfg["weight_decay"],
+    #             betas=(0.9, 0.95),
+    #             )
+    #     num_iterations = self.trainer_cfg["max_num_epochs"] * \
+    #         self.trainer_cfg["num_train_batches_per_epoch"]
+    #     # import transformers
+    #     # scheduler = transformers.get_cosine_schedule_with_warmup(optimizer=optimizer,num_warmup_steps=self.trainer_cfg["warm_iterations"], num_training_steps=num_iterations)  
+    #     scheduler = LinearWarmupPolyLR(
+    #         optimizer=optimizer,
+    #         warm_iterations=self.trainer_cfg["warm_iterations"],
+    #         warm_lr=self.trainer_cfg["warm_lr"],
+    #         poly_gamma=self.trainer_cfg["poly_gamma"],
+    #         num_iterations=num_iterations
+    #     )
+    
+    #     return [optimizer], {'scheduler': scheduler, 'interval': 'step'}
+
     def configure_optimizers(self):
         """
         Configure optimizer and scheduler
@@ -1849,41 +1935,134 @@ class SwinUnetrUNetModule(LightningBaseModuleSWA):
         # configure optimizer
         logger.info(f"Running: initial_lr {self.trainer_cfg['initial_lr']} "
                     f"weight_decay {self.trainer_cfg['weight_decay']} "
-                    f"SGD with momentum {self.trainer_cfg['sgd_momentum']} and "
+                    f"ADAMW with momentum {self.trainer_cfg['sgd_momentum']} and "
                     f"nesterov {self.trainer_cfg['sgd_nesterov']}")
         
-        if self.trainer_cfg["seperate_lr"]:
-            wd_groups = get_params_no_wd_on_norm_seperate_lr(self, weight_decay=self.trainer_cfg['weight_decay'],lr_encoder= self.trainer_cfg["initial_lr"], lr_other= self.trainer_cfg["initial_lr"]*10)
+        if not self.trainer_cfg["freeze_encoder"]:
+            if self.trainer_cfg["seperate_lr"]:
+                wd_groups = get_params_no_wd_on_norm_seperate_lr(self, weight_decay=self.trainer_cfg['weight_decay'],lr_encoder= self.trainer_cfg["initial_lr"], lr_other= self.trainer_cfg["initial_lr"]*10)
 
-            optimizer = torch.optim.AdamW(
-                wd_groups,
-                weight_decay=self.trainer_cfg["weight_decay"],
-                betas=(0.9, 0.95),
-                )
+                # optimizer = torch.optim.AdamW(
+                #     wd_groups,
+                #     weight_decay=self.trainer_cfg["weight_decay"],
+                #     betas=(0.9, 0.95),
+                #     )
+                if self.trainer_cfg["optimizer"]=="adamw":
+                    optimizer = torch.optim.AdamW(
+                        wd_groups,
+                        weight_decay=self.trainer_cfg["weight_decay"],
+                        betas=(0.9, 0.95),
+                        )
+                else:
+                    optimizer = torch.optim.SGD(
+                        wd_groups,
+                        lr=self.trainer_cfg["initial_lr"],
+                        weight_decay=self.trainer_cfg["weight_decay"],
+                        momentum=self.trainer_cfg["sgd_momentum"],
+                        nesterov=self.trainer_cfg["sgd_nesterov"]
+                        )
+                print(f"Using optimizer: {optimizer}")
+                
+            else:
+                wd_groups = get_params_no_wd_on_norm(self, weight_decay=self.trainer_cfg['weight_decay'])
+
+                # optimizer = torch.optim.AdamW(
+                #     wd_groups,
+                #     self.trainer_cfg["initial_lr"],
+                #     weight_decay=self.trainer_cfg["weight_decay"],
+                #     betas=(0.9, 0.95),
+                #     )
+
+                if self.trainer_cfg["optimizer"]=="adamw":
+                    optimizer = torch.optim.AdamW(
+                        wd_groups,
+                        weight_decay=self.trainer_cfg["weight_decay"],
+                        betas=(0.9, 0.95),
+                        )
+                else:
+                    optimizer = torch.optim.SGD(
+                        wd_groups,
+                        lr=self.trainer_cfg["initial_lr"],
+                        weight_decay=self.trainer_cfg["weight_decay"],
+                        momentum=self.trainer_cfg["sgd_momentum"],
+                        nesterov=self.trainer_cfg["sgd_nesterov"]
+                        )
+                print(f"Using optimizer: {optimizer}")
+
+
+            num_iterations = self.trainer_cfg["max_num_epochs"] * \
+                self.trainer_cfg["num_train_batches_per_epoch"]
             
-        else:
-            wd_groups = get_params_no_wd_on_norm(self, weight_decay=self.trainer_cfg['weight_decay'])
+            # import transformers
+            # scheduler = transformers.get_cosine_schedule_with_warmup(optimizer=optimizer,num_warmup_steps=self.trainer_cfg["warm_iterations"], num_training_steps=num_iterations) 
+            # scheduler = LinearWarmupPolyLR(
+            #     optimizer=optimizer,
+            #     warm_iterations=self.trainer_cfg["warm_iterations"],
+            #     warm_lr=self.trainer_cfg["warm_lr"],
+            #     poly_gamma=self.trainer_cfg["poly_gamma"],
+            #     num_iterations=num_iterations
+            # )
+            if self.trainer_cfg.get("scheduler","cosine")=="cosine": #for when there is no scheduler in the config
+                print("Using cosine scheduler")
+                scheduler = transformers.get_cosine_schedule_with_warmup(
+                    optimizer=optimizer,
+                    num_warmup_steps=self.trainer_cfg["warm_iterations"], 
+                    num_training_steps=num_iterations,
+                    ) 
+            elif self.trainer_cfg.get("scheduler","cosine")=="poly":
+                print("Using poly scheduler")
+                scheduler = LinearWarmupPolyLR(
+                optimizer=optimizer,
+                warm_iterations=self.trainer_cfg["warm_iterations"],
+                warm_lr=self.trainer_cfg["warm_lr"],
+                poly_gamma=self.trainer_cfg["poly_gamma"],
+                num_iterations=num_iterations
+            )
 
+            print(f"Using scheduler: {scheduler}")
+            #stop here to debug
+            #raise ValueError("Stop here to debug")
+        else:
+            print("Freezing encoder")
+            for name, param in self.model.named_parameters():
+                if "encoder" in name:
+                    if 'decoder' not in name:
+                        print("setting encoder to requires grad False", name)
+                        param.requires_grad = False
+
+            wd_groups = get_params_no_wd_on_norm_freeze(self, weight_decay=self.trainer_cfg['weight_decay'])
+    
+            # if seperate the learning rate in encder and decoder
+            # optimizer = torch.optim.SGD(
+            #     wd_groups,
+            #     1e-2,
+            #     weight_decay=3e-5,
+            #     momentum=0.9,
+            #     nesterov=True,
+            #     )
             optimizer = torch.optim.AdamW(
                 wd_groups,
                 self.trainer_cfg["initial_lr"],
                 weight_decay=self.trainer_cfg["weight_decay"],
                 betas=(0.9, 0.95),
                 )
-        num_iterations = self.trainer_cfg["max_num_epochs"] * \
-            self.trainer_cfg["num_train_batches_per_epoch"]
-        # import transformers
-        # scheduler = transformers.get_cosine_schedule_with_warmup(optimizer=optimizer,num_warmup_steps=self.trainer_cfg["warm_iterations"], num_training_steps=num_iterations)  
-        scheduler = LinearWarmupPolyLR(
-            optimizer=optimizer,
-            warm_iterations=self.trainer_cfg["warm_iterations"],
-            warm_lr=self.trainer_cfg["warm_lr"],
-            poly_gamma=self.trainer_cfg["poly_gamma"],
-            num_iterations=num_iterations
-        )
-    
-        return [optimizer], {'scheduler': scheduler, 'interval': 'step'}
 
+            num_iterations = self.trainer_cfg["max_num_epochs"] * \
+                self.trainer_cfg["num_train_batches_per_epoch"]
+
+            scheduler = LinearWarmupPolyLR(
+                optimizer=optimizer,
+                warm_iterations=self.trainer_cfg["warm_iterations"],
+                warm_lr=1e-6,
+                poly_gamma=0.9,
+                num_iterations=num_iterations
+            )  
+            # import transformers
+            # scheduler = transformers.get_cosine_schedule_with_warmup(optimizer=optimizer,num_warmup_steps=self.trainer_cfg["warm_iterations"], num_training_steps=num_iterations) 
+
+
+        return [optimizer], {'scheduler': scheduler, 'interval': 'step'}
+    
     @classmethod
     def from_config_plan(cls,
                          model_cfg: dict,

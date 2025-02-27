@@ -14,6 +14,7 @@ from functools import partial
 
 import torch
 import torch.nn as nn
+import re
 
 from .videomae import video_vit
 from .videomae.video_vit import LayerNorm3d
@@ -35,14 +36,22 @@ def interpolate_pretrained_pos_enc_encoder(args: dict, state_dict: dict, seg_tem
     Returns:
         dict: The adjusted state dictionary with the updated positional encoding
     """
-    orig_patches_per_dim = 224 // 16  # original 224x224 model with patch size 16
+
+    if 'patch_embed.proj.weight' in state_dict.keys():
+        kernal_shape= state_dict['patch_embed.proj.weight'].shape[-1]
+    else:
+        kernal_shape=16
+
+    orig_patches_per_dim = args.checkpoint_shape // kernal_shape  # original 224x224 model with patch size 16
     new_patches_per_dim = args.img_size // args.patch_size
     if orig_patches_per_dim != new_patches_per_dim:
         if not seg_temporal_pos:
-            # we add a small number to avoid floating point error in the interpolation
+            # we add a small number (0.1) to avoid floating point error in the interpolation
             # see discussion at https://github.com/facebookresearch/dino/issues/8
+            #prepare for interpolation
             h0, w0 = new_patches_per_dim + 0.1, new_patches_per_dim + 0.1
-            # print("pos_enc before interpolate",  state_dict["pos_embed_spatial"].size()) # ([1, 196, 1024])
+            # print("pos_enc before interpolate",  state_dict["pos_embed_spatial"].size()) # ([1, 196, 1024]) #224/16=14, 14*14=196, 
+                                                                                             #[1,64 (8*8), 1024]
             pos_enc = state_dict["pos_embed_spatial"].reshape(
                 1, orig_patches_per_dim, orig_patches_per_dim, -1
             )
@@ -83,7 +92,25 @@ def interpolate_pretrained_pos_enc_encoder(args: dict, state_dict: dict, seg_tem
         print("pos_enc temporal after interpolate", pos_enc.size())
         state_dict["pos_embed_temporal"] = pos_enc
 
-
+        expected_embed_dim = args.embed_dim  # e.g., 1024
+        if "pos_embed_temporal" in state_dict:
+            current_dim = state_dict["pos_embed_temporal"].shape[-1]
+            if current_dim != expected_embed_dim:
+                print(f"Adjusting pos_embed_temporal channel dim from {current_dim} to {expected_embed_dim}")
+                # Here, state_dict["pos_embed_temporal"] has shape [1, T, current_dim] (e.g., [1, 6, 768]).
+                # Since we want to interpolate the last dimension (the embedding dimension),
+                # we can directly call F.interpolate, which expects an input of shape (N, C, L) for 1D interpolation.
+                # Our tensor is already [1, T, current_dim] with T as the channel dimension if we interpret it as (N, C, L)?
+                # Actually, in our case, T is the temporal tokens (6) and current_dim is the embedding dimension (768).
+                # F.interpolate expects (N, C, L), so if we treat T as channels and current_dim as length, we would get [1,6,1024] if we interpolate length.
+                # However, we want to change the last dimension, so we treat the tensor as is.
+                pos_embed = state_dict["pos_embed_temporal"]  # shape: [1, T, current_dim]
+                # Directly interpolate along the last dimension:
+                pos_embed = F.interpolate(pos_embed, size=expected_embed_dim, mode="linear", align_corners=False)
+                # This will transform [1, 6, 768] to [1, 6, 1024]
+                state_dict["pos_embed_temporal"] = pos_embed
+                print("pos_embed_temporal after channel adjustment", pos_embed.size())
+            
     return state_dict
 
 def adjust_state_dict_keys(state_dict: dict) -> dict:
@@ -121,17 +148,57 @@ def adjust_state_dict_keys(state_dict: dict) -> dict:
 
     return adjusted_state_dict
 
+# def adjust_pos_embed_temporal_channels(state_dict, expected_dim):
+#     """
+#     Upscale pos_embed_temporal from its current channel dimension to expected_dim.
+#     Assumes state_dict["pos_embed_temporal"] has shape [1, T, C].
+#     """
+#     if "pos_embed_temporal" in state_dict:
+#         pos_embed = state_dict["pos_embed_temporal"]
+#         current_dim = pos_embed.shape[-1]
+#         if current_dim != expected_dim:
+#             print(f"Adjusting pos_embed_temporal from {pos_embed.shape} to (1, T, {expected_dim})")
+#             # Permute to [1, C, T] so we can interpolate along the channel dimension.
+#             pos_embed = pos_embed.permute(0, 2, 1)
+#             # Interpolate along the channel dimension.
+#             pos_embed = F.interpolate(pos_embed, size=expected_dim, mode="linear", align_corners=False)
+#             print(, pos_embed.size()))
+#             # Permute back to [1, T, expected_dim]
+#             #pos_embed = pos_embed.permute(0, 2, 1)
+#             state_dict["pos_embed_temporal"] = pos_embed
+#     return state_dict
+
 def load_pretrained_weights_encoder(model, model_cfg):
     saved_model = torch.load(model_cfg['pretrained_path'], map_location="cpu")
+    # print("path ",model_cfg['pretrained_path'])
+    # print("keys", saved_model.keys())
+    # model.load_state_dict(saved_model['model_state'])
+    # # Load the optimizer state
+    # optimizer.load_state_dict(saved_model['optimizer_states'])
+
+    # # Verify the optimizer state
+    # print("Optimizer state loaded successfully:")
+    # print(optimizer.state_dict())
     
+    # raise ValueError("verify optimizer state")
+
     if 'model_state' in saved_model.keys():
         pretrained_dict = saved_model['model_state']
     elif 'model' in saved_model.keys():
         pretrained_dict = saved_model['model']
     else:
         raise ValueError("Could not find the model state in the loaded model")
+    
+    # print("Pretrained model keys:")
+    # for key in pretrained_dict.keys():
+    #     print(key)
+
     # if is mae or hiera encoder  
     pretrained_dict = adjust_state_dict_keys(pretrained_dict)
+
+    # print("Pretrained model keys:")
+    # for key in pretrained_dict.keys():
+    #     print(key)
 
     pretrained_dict["decoder_pos_embed"] = pretrained_dict["decoder_pos_embed"][:, 1:, :]
     # check if we need to interpoalte the positional encoding
@@ -142,11 +209,32 @@ def load_pretrained_weights_encoder(model, model_cfg):
         pretrained_dict.pop("patch_embed.proj.bias")
 
     if model_cfg['img_size'] != 224 or model_cfg['num_frames'] != 16:
-        args = {'img_size': model_cfg['img_size'], 'num_frames': model_cfg['num_frames'], 't_patch_size': model_cfg['t_patch_size'], 'patch_size': model_cfg['patch_size']}
+        
+        checkpoint_name = model_cfg['pretrained_path']
+        #print("checkpoint_name", checkpoint_name)
+        match = re.search(r'_(\d+)\.pth$', checkpoint_name)  # Matches the last number before ".pth"
+        #print("match", match)
+        if match:
+            checkpoint_shape = int(match.group(1))  # Extract the first dimension (128 in this case)
+        else:
+            raise ValueError("Checkpoint file name does not contain the expected shape format.")
+        #print("checkpoint_shape", checkpoint_shape)
+
+        args = {'img_size': model_cfg['img_size'], 'num_frames': model_cfg['num_frames'], 't_patch_size': model_cfg['t_patch_size'], 'patch_size': model_cfg['patch_size'], 'checkpoint_shape': checkpoint_shape, 'embed_dim':model_cfg['embed_dim']}
         args = omegaconf.OmegaConf.create(args)
+        
+        print("args",args)
         pretrained_dict = interpolate_pretrained_pos_enc_encoder(args, pretrained_dict)
 
+      #print("interpolated pretrained model keys:")
+    # print("Pretrained model keys:")
+    # for key in pretrained_dict.keys():
+    #     print(key)
 
+    # print("\nModel keys:")
+    # for key in model.state_dict().keys():
+    #     print(key)
+    #exit()
     missing, unexpected = model.load_state_dict(
         pretrained_dict, strict=False
     )
@@ -183,12 +271,19 @@ class VideoMAE_Encoder(nn.Module):
         upsample_stage='direct',
         skip_connection=False,
         output_layers=[5,11,17,23],
+        drop=0.0,
+        attn_drop=0.0,
+        drop_path=0.0,
     ):
         super().__init__()
         cls_embed_decoder = False 
         self.cls_embed_decoder = cls_embed_decoder
         self.output_layers = output_layers
         
+        self.drop = drop
+        self.attn_drop = attn_drop
+        self.drop_path = drop_path
+
         self.trunc_init = trunc_init
         self.sep_pos_embed = sep_pos_embed
         self.sep_pos_embed_decoder = sep_pos_embed_decoder
@@ -259,18 +354,25 @@ class VideoMAE_Encoder(nn.Module):
                     qk_scale=None,
                     norm_layer=norm_layer,
                     use_lora=use_lora,
+                    drop=drop,
+                    attn_drop=attn_drop,
+                    drop_path=drop_path,
                 )
                 for i in range(depth)
             ]
         )
-
+        
         # if self.map_to_decoder_type == 'conv':
         if self.skip_connection:
             self.decoder0_upsampler = Decoder_Map(in_planes = in_chans, out_planes=feature_shapes[0][0], input_size=feature_shapes[0][1:], output_size=feature_shapes[0][1:],
                                                     upsample_func=upsample_func, upsample_stage=upsample_stage)
         else:
-            print("set layer", 0, 'in plane', embed_dim, 'out plane', feature_shapes[0][0], 'input size', feature_shapes[0][1:], 'output size', feature_shapes[0][1:])
+            print("skip connection is false")
+            print("set layer", 0, 'in plane', embed_dim, 'out plane', feature_shapes[0][0], 'input size', self.token_shape, 'output size', feature_shapes[0][1:])
             setattr
+            #next line of code was added by 
+            #self.channel_adjust = nn.Conv3d(embed_dim, feature_shapes[0][0], kernel_size=1) #
+
             self.decoder0_upsampler = Decoder_Map(in_planes=embed_dim,
                                              out_planes=feature_shapes[0][0],
                                              input_size=self.token_shape,
@@ -515,19 +617,27 @@ class VideoMAE_Encoder(nn.Module):
         
         if not self.skip_connection:
             # use the last layer feature as shown in vitdet
+            #print("debug x", x.size())
             intermediate_feat = self.convert_to_3d_tensor(x)
+            #print("intermediate_feat", intermediate_feat.size())
 
             feat0 = self.decoder0_upsampler(intermediate_feat)
+            #print("map to decoder 0", feat0.size())
             multi_scale_feat.append(feat0)
-            # print("map to decoder 0", feat0.size())
+            #print("map to decoder 0", feat0.size())
             for num_j, layer_j in  enumerate(self.intermediate_feat_layer):
                 intermediate_feat = self.convert_to_3d_tensor(x)
+                # print(f"Before decoder {layer_j}, shape: {intermediate_feat.size()}") 
                 intermediate_feat = getattr(self, f"decoder{layer_j}_upsampler")(intermediate_feat)
-                # print("map to decoder", layer_j, intermediate_feat.size())
-                # print("intermediate_feat_layer", self.intermediate_feat_layer)
+                # print("last layer map to decoder", num_j, intermediate_feat.size())
                 multi_scale_feat.append(intermediate_feat)
-
-        
+            # 96 example size
+                # map to decoder 5 torch.Size([1, 64, 32, 96, 96])
+                # map to decoder 10 torch.Size([1, 128, 16, 48, 48])
+                # map to decoder 15 torch.Size([1, 256, 8, 24, 24])
+                # map to decoder 19 torch.Size([1, 320, 8, 12, 12])
+                # map to decoder 23 torch.Size([1, 320, 8, 6, 6])
+                        
         return multi_scale_feat
 
     def convert_to_3d_tensor(self, x):

@@ -123,3 +123,11 @@ checkpoints/swin_unetr.base_5000ep_f48_lr2e-4_pretrained.pt
 checkpoints
 sh_jobs/luna_crop/sbatch_log/
 sh_jobs/luna_qi/sbatch_log/
+sh_jobs/luna_qi/sbatch_log_new/
+sh_jobs/luna_crop/mae_jobs/sbatch_log/
+sh_jobs/luna_crop/mae_jobs/sbatch_log_new/
+sh_jobs/luna_crop/swin_jobs/sbatch_log/
+sh_jobs/luna_crop/swin_jobs/sbatch_log_new/
+sh_jobs/luna_crop/z_old_mae_jobs/sbatch_log/
+sh_jobs/luna_crop/z_sbatch_log_finished
+sh_jobs/luna_crop/z_sbatch_log_old

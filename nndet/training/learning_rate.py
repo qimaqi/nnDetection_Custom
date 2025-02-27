@@ -234,6 +234,77 @@ class CycleLinear(_LRScheduler):
         ) for idx, base_lr in enumerate(self.base_lrs)]
         return lrs
 
+# class CycleCosine(_LRScheduler):
+#     def __init__(self,
+#                  optimizer: Optimizer,
+#                  cycle_num_iterations: int,
+#                  cycle_initial_lr: Union[float, Sequence[float]],
+#                  cycle_final_lr:Union[float, Sequence[float]],
+#                  last_epoch: int = -1,
+#                  ) -> None:
+#         """
+#         Cyclic learning rates with cosine decay
+
+#         Args:
+#             optimizer: optimizer for lr scheduling
+#             cycle_num_iterations: number of iterations per cycle
+#             cycle_initial_lr: initial learning rate of cycle
+#             cycle_final_lr: final learning rate of cycle
+#             last_epoch: The index of the last epoch. Defaults to -1.
+#         """
+
+# chatgpt
+class CycleCosine(_LRScheduler):
+    def __init__(self,
+                 optimizer: Optimizer,
+                 cycle_num_iterations: int,
+                 cycle_initial_lr: Union[float, Sequence[float]],
+                 cycle_final_lr: Union[float, Sequence[float]],
+                 last_epoch: int = -1,
+                 ) -> None:
+        """
+        Cyclic learning rates with cosine decay
+
+        Args:
+            optimizer: optimizer for lr scheduling
+            cycle_num_iterations: number of iterations per cycle
+            cycle_initial_lr: initial learning rate of cycle
+            cycle_final_lr: final learning rate of cycle
+            last_epoch: The index of the last epoch. Defaults to -1.
+        """
+        # cycle cosine lr
+        self.cycle_num_iterations = cycle_num_iterations
+
+        if not isinstance(cycle_initial_lr, list) and not isinstance(cycle_initial_lr, tuple):
+            self.cycle_initial_lr = [cycle_initial_lr] * len(optimizer.param_groups)
+        else:
+            if len(cycle_initial_lr) != len(optimizer.param_groups):
+                raise ValueError("Expected {} cycle_initial_lr, but got {}".format(
+                    len(optimizer.param_groups), len(cycle_initial_lr)))
+            self.cycle_initial_lr = [cycle_initial_lr]
+
+        if not isinstance(cycle_final_lr, list) and not isinstance(cycle_final_lr, tuple):
+            self.cycle_final_lr = [cycle_final_lr] * len(optimizer.param_groups)
+        else:
+            if len(cycle_final_lr) != len(optimizer.param_groups):
+                raise ValueError("Expected {} cycle_final_lr, but got {}".format(
+                    len(optimizer.param_groups), len(cycle_final_lr)))
+            self.cycle_final_lr = [cycle_final_lr]
+        super().__init__(optimizer, last_epoch=last_epoch)
+
+    def get_lr(self) -> List[float]:
+        """
+        Compute current learning rate for each param group # should be cosine_annealing_lr
+        """
+        lrs = [cosine_annealing_lr(
+            iteration=max(self._step_count - 1, 0),  # init steps once
+            num_iterations=self.cycle_num_iterations,
+            initial_lr=self.cycle_initial_lr[idx],
+            final_lr=self.cycle_final_lr[idx],
+        ) for idx, base_lr in enumerate(self.base_lrs)]
+        return lrs
+
+
 
 class WarmUpExponential(_LRScheduler):
     def __init__(self,
@@ -268,3 +339,5 @@ class WarmUpExponential(_LRScheduler):
         # last epoch is automatically handled by parent class
         return [base_lr * (1 - math.exp(- (1 - self.beta2) * self.last_epoch))
                 for base_lr in zip(self.base_lrs)]
+
+

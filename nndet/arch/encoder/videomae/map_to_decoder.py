@@ -52,7 +52,6 @@ class Decoder_Map(nn.Module):
         assert len(input_size) == len(output_size)
         # rescale_ratio = input_size / output_size
 
-
         upsample_feature = input_size
         upsample_ratio = output_size // input_size
         if np.any(upsample_ratio > 1):
@@ -81,7 +80,6 @@ class Decoder_Map(nn.Module):
                 elif stages >= 5:
                     raise NotImplementedError("Too many stages")
 
-
                 for i in range(stages):
                     # check first dimension
                     upsample_kernels = [2, 2, 2]
@@ -91,7 +89,10 @@ class Decoder_Map(nn.Module):
                             upsample_kernels[j] = 1
                             strides[j] = 1
                     if upsample_func == 'interpolate':
+                        upsample_kernels = tuple(upsample_kernels)
+                        depthwise_conv = nn.Conv3d(features[i], features[i+1], kernel_size=1, stride=1, padding=0)
                         self.blocks.append(nn.Upsample(scale_factor=upsample_kernels, mode='trilinear', align_corners=False))
+                        self.blocks.append(depthwise_conv) 
                         upsample_feature = upsample_feature * upsample_kernels
 
                     elif upsample_func == 'transpose':
@@ -106,10 +107,14 @@ class Decoder_Map(nn.Module):
                 
                 if upsample_func == 'interpolate':
                     out_dim = in_planes
+                    # we direct interpolate, in_planes too large, we do kernel size 1 conv to reduce channels
+                    depthwise_conv = nn.Conv3d(in_planes, out_dim, kernel_size=1, stride=1, padding=0)
+
                     upsample_kernels = target_upsample_ratios
                     upsample_kernels = [float(k) for k in upsample_kernels]
                     upsample_kernels = tuple(upsample_kernels)
-                    self.blocks = [nn.Upsample(scale_factor=upsample_kernels, mode='trilinear', align_corners=False)]
+                    
+                    self.blocks = [depthwise_conv, nn.Upsample(scale_factor=upsample_kernels, mode='trilinear', align_corners=False)]
                     upsample_feature = upsample_feature * np.array(upsample_kernels)
 
                 elif upsample_func == 'transpose':

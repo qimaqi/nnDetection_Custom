@@ -188,11 +188,14 @@ class BoxEnsembler(BaseEnsembler):
             torch.Tensor: postprocessed labels
             torch.Tensor: postprocessed weights
         """
+
+        print("before postprocessing number of boxes: ", boxes.shape[0])
         p_sorted, idx_sorted = probs.sort(descending=True)
         idx_sorted = idx_sorted[:self.parameters["model_topk"]]
         p_sorted = p_sorted[:self.parameters["model_topk"]]
         keep_idxs = p_sorted > self.parameters["model_score_thresh"]
         idx_sorted = idx_sorted[keep_idxs]
+        print("number of boxes after score thresholding", self.parameters["model_score_thresh"], ":" , idx_sorted.shape[0])
 
         b, p, l, w = boxes[idx_sorted], probs[idx_sorted], labels[idx_sorted], weights[idx_sorted]
 
@@ -201,15 +204,17 @@ class BoxEnsembler(BaseEnsembler):
         # need to remove because of the IoU computation
         keep = remove_small_boxes(
             b, min_size=self.parameters["remove_small_boxes"])
+        print(f"number of boxes after removing small boxes: {keep.shape[0]}")
         b, p, l, w = b[keep], p[keep], l[keep], w[keep]
-
+        
         _boxes, _probs, _labels, _weights = self.parameters["model_nms_fn"](
             boxes=b, scores=p, labels=l, weights=w,
             iou_thresh=self.parameters["model_iou"],
         )
+        print(f"number of boxes after nms (final number): {_boxes.shape[0]}")
 
         # predictions are sorted
-        _boxes = _boxes[:self.parameters.get("model_detections_per_image", 1000)]
+        _boxes = _boxes[:self.parameters.get("model_detections_per_image", 1000)] # limit number of boxes that is defined in conf
         _probs = _probs[:self.parameters.get("model_detections_per_image", 1000)]
         _labels = _labels[:self.parameters.get("model_detections_per_image", 1000)]
         _weights = _weights[:self.parameters.get("model_detections_per_image", 1000)]

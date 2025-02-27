@@ -222,8 +222,17 @@ def npz2npy(npz_file: str, delete_npz: bool = False, to_int=False):
         # print(a["seg"].dtype, a["seg"].min(), a["seg"].max())
         
         if to_int:
-            min_val = -2.32
-            max_val = 2.50
+            # determine min_val or max_val 
+            # check if it is custom prep or nndet prep
+            if a['data'].max() > 4:
+                min_val = -2.1
+                max_val = 4.7
+                print("using max val", max_val)
+            else:
+                min_val = -2.32
+                max_val = 2.50
+                print("using max val", max_val)
+
             assert a["data"].min() >= min_val, f"min value {a['data'].min()} is smaller than {min_val}"
             assert a["data"].max() <= max_val, f"max value {a['data'].max()} is larger than {max_val}"
 

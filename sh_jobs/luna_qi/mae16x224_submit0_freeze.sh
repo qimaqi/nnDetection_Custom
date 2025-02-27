@@ -1,11 +1,11 @@
 #!/bin/bash
 #SBATCH --job-name=luna_crop_s0
-#SBATCH --output=sbatch_log/luna_crop_mae_16x224_s1_freeze_sgd_%j.out
+#SBATCH --output=sbatch_log/luna_crop_mae_16x224_s1_freeze_adamw_cosine_seperate_%j.out
 #SBATCH --nodes=1
 #SBATCH --time=48:00:00
 #SBATCH --gres=gpu:1
 
-#SBATCH --nodelist=octopus02
+#SBATCH --nodelist=bmicgpu07,bmicgpu08,bmicgpu09,octopus01,octopus02,octopus03,octopus04
 #SBATCH --cpus-per-task=4
 #SBATCH --mem 128GB
 #SBATCH --mail-type=BEGIN,END,FAIL
@@ -45,7 +45,13 @@ echo "Time: $(date)"
 
 # nndet_unpack ${det_data}/Task017_Luna_crop/preprocessed/D3V001_3d/imagesTr 6
 
-nndet_train 017 -o exp.fold=1 train=mae_plain +augment_cfg.patch_size=[16,224,224] trainer_cfg.freeze_encoder=True trainer_cfg.gradient_clip_val=0  trainer_cfg.max_num_epochs=50 trainer_cfg.swa_epochs=10 trainer_cfg.warm_iterations=4000  trainer_cfg.gradient_clip_val=0 trainer_cfg.amp_backend=None trainer_cfg.precision=32 trainer_cfg.amp_level=None --sweep
+# nndet_train 017 -o exp.fold=1 train=mae_plain train.mode=resume +augment_cfg.patch_size=[16,224,224] trainer_cfg.freeze_encoder=True trainer_cfg.gradient_clip_val=0  trainer_cfg.max_num_epochs=50 trainer_cfg.swa_epochs=10 trainer_cfg.warm_iterations=4000  trainer_cfg.gradient_clip_val=0 trainer_cfg.amp_backend=None trainer_cfg.precision=32 trainer_cfg.amp_level=None --sweep
+
+nndet_train 026 -o exp.fold=0 train=mae_plain train.mode=resume +augment_cfg.patch_size=[16,224,224] trainer_cfg.freeze_encoder=True trainer_cfg.gradient_clip_val=0  trainer_cfg.max_num_epochs=60 trainer_cfg.swa_epochs=0 trainer_cfg.warm_iterations=4000  trainer_cfg.gradient_clip_val=0 trainer_cfg.amp_backend=None trainer_cfg.precision=32 trainer_cfg.amp_level=None trainer_cfg.scheduler=poly --sweep 
+
+#resume this after finishing "skip"
+
+# AttributeError: 'SWACycleLinear' object has no attribute 'n_averaged'
 
 
 

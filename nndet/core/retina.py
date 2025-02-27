@@ -149,12 +149,16 @@ class BaseRetinaNet(AbstractModel):
             losses.update(self.segmenter.compute_loss(pred_seg, target_seg))
 
         if evaluation:
+            print("before crop len of pred_detection", len(pred_detection['box_deltas']), len(pred_detection['box_logits']))
+
             prediction = self.postprocess_for_inference(
                 images=images,
                 pred_detection=pred_detection,
                 pred_seg=pred_seg,
                 anchors=anchors,
             )
+
+            print("after crop len of pred_detection", len(prediction['pred_boxes']), len(prediction['pred_scores']))
         else:
             prediction = None
 
@@ -228,8 +232,8 @@ class BaseRetinaNet(AbstractModel):
         features_maps_all = self.decoder(self.encoder(inp))
         feature_maps_head = [features_maps_all[i] for i in self.decoder_levels]
 
-        # for feat_i in feature_maps_head:
-        #     print("feat_i", feat_i.shape, feat_i.min(), feat_i.max(), feat_i.mean(), feat_i.dtype)
+        # for step, feat_i in enumerate(feature_maps_head):
+        #     print("feat_i", feat_i.shape, "step", step)
 
 
         pred_detection = self.head(feature_maps_head)
@@ -430,12 +434,14 @@ class BaseRetinaNet(AbstractModel):
         # print("seg", pred_seg['seg_logits'].min(), pred_seg['seg_logits'].max(), pred_seg['seg_logits'].dtype)
         # raise ValueError('stop here')
 
+        print("Box shape before postprocess", len(pred_detection['box_deltas']), len(pred_detection['box_logits']))
         prediction = self.postprocess_for_inference(
             images=images,
             pred_detection=pred_detection,
             pred_seg=pred_seg,
             anchors=anchors,
         )
+        print("Box shape after postprocess", len(prediction['pred_boxes']), len(prediction['pred_scores']))
         return prediction
 
 # np torch.Size([4, 1, 16, 224, 224]) tensor(-2.1874, device='cuda:0') tensor(1.6805, device='cuda:0')                  | 0/104 [00:00<?, ?it/s]

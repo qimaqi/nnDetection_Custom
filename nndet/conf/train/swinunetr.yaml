@@ -47,10 +47,11 @@ trainer_cfg:
 
   initial_lr: 0.0001 # initial learning rate to start with
   seperate_lr: True
+  scheduler: "poly" 
+  optimizer: "adamw" #
   sgd_momentum: 0.9 # momentum term
   sgd_nesterov: True # nesterov momentum
   weight_decay: 3.e-5 # weight decay for optimizer
-
   warm_iterations: 4000 # number of iterations with warmup
   warm_lr: 1.e-6 # learning rate to start warmup from
 
@@ -69,7 +70,8 @@ model_cfg:
     feature_size: 48
     map_to_decoder_type: "conv"
     pretrained_path: /scratch_net/schusch/qimaqi/cbct_proj/CBCT/nnDetection_Custom/checkpoints/swin_unetr.base_5000ep_f48_lr2e-4_pretrained.pt
-  
+    skip_connection: True
+
   decoder_kwargs: # keyword arguments passed to decoder
     min_out_channels: 8
     upsampling_mode: "transpose"
@@ -118,6 +120,3 @@ model_cfg:
 
   plan_arch_overwrites: {} # overwrite arguments of architecture
   plan_anchors_overwrites: {} # overwrite arguments of anchors
-
-debug:
-  num_cases_val: 10
